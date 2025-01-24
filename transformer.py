@@ -11,7 +11,7 @@ from sklearn.preprocessing import MinMaxScaler
 
 from SAnD.core.model import SAnD
 from SAnD.utils.trainer import NeuralNetworkClassifier
-######################################## Prueba Commit 23012025
+######################################## Prueba Commit 24012025
 # Real Dataset Generator
 dataFile = '/home/zhengshen/NN4SOH/dataset/ARC-FY/B0005'   # Modify this path
 # dataFile = '/Users/jason/NN4SOH/dataset/ARC-FY/B0005'
