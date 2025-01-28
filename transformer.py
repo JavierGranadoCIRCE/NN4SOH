@@ -13,7 +13,7 @@ from SAnD.core.model import SAnD
 from SAnD.utils.trainer import NeuralNetworkClassifier
 ######################################## Prueba Commit 24012025
 # Real Dataset Generator
-dataFile = '/home/zhengshen/NN4SOH/dataset/ARC-FY/B0005'   # Modify this path
+dataFile = 'dataset/ARC-FY/B0005'   # Modify this path
 # dataFile = '/Users/jason/NN4SOH/dataset/ARC-FY/B0005'
 raw = scio.loadmat(dataFile)['B0005'][0][0][0][0]
 
