@@ -116,7 +116,12 @@ clf = NeuralNetworkClassifier(
     SAnD(in_feature, seq_len, n_heads, factor, num_class, num_layers),
     nn.MSELoss(),
     optim.Adam, optimizer_config={"lr": 1e-4, "betas": (0.9, 0.98), "eps": 4e-09, "weight_decay": 5e-4},
-    experiment=Experiment("8mKGHiYeg2P7dZEFlvQv3PEzc")
+    #experiment=Experiment("8mKGHiYeg2P7dZEFlvQv3PEzc")
+    experiment = Experiment(api_key="Td3ICbNoK8hW14nwxZfp10SGN",
+                        project_name="nn4soh",
+                        workspace="javiergranadocirce")
+
+
 )
 
 # from SAnD.core.model import SAnD

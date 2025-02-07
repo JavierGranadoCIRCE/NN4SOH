@@ -179,6 +179,7 @@ class NeuralNetworkClassifier:
                     _, predicted = torch.max(outputs, 1)
                     correct += (predicted == y).sum().float().cpu().item()
 
+                    self.experiment.log_metric("predicted_soh", outputs.cpu().item(), step=epoch)
                     self.experiment.log_metric("loss", loss.cpu().item(), step=epoch)
                     self.experiment.log_metric("accuracy", float(correct / total), step=epoch)
             if validation:
