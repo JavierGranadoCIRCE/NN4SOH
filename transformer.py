@@ -1,5 +1,15 @@
 from comet_ml import Experiment
+import os
+import time
+import tqdm
+import pandas as pd
+from copy import deepcopy
+from typing import Dict
 
+import torch
+import torch.nn as nn
+from torch.utils.data import DataLoader
+from sklearn.metrics import confusion_matrix
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -166,7 +176,8 @@ clf.fit(
     {"train": train_loader,
      "val": val_loader,
      "test": test_loader},
-    epochs=80
+    #epochs=80
+     epochs=1
 )
 
 # evaluating
@@ -174,3 +185,15 @@ clf.fit(
 
 # save
 clf.save_to_file("save_params/")
+
+#Conversión a TorchScript para ejecutar el modelo en Raspberry o ARM sin depender de PyTorch en tiempo real
+# Cargar el modelo
+model = SAnD(in_feature, seq_len, n_heads, factor, num_class, num_layers)  # Define tu modelo
+model.load_state_dict(torch.load("save_params/trained model.pth"), strict=False)
+model.eval()
+
+# Convertir a TorchScript
+scripted_model = torch.jit.script(model)
+
+# Guardar el modelo convertido
+scripted_model.save("save_params/modelo_torchscript.pt")
