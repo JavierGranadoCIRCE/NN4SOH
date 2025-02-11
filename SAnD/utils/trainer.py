@@ -350,9 +350,10 @@ class NeuralNetworkClassifier:
         if not os.path.isdir(path):
             os.mkdir(path)
 
-        file_name = "model_params-epochs_{}-{}.pth".format(
-            self.hyper_params["epochs"], time.ctime().replace(" ", "_")
-        )
+        # file_name = "model_params-epochs_{}-{}.pth".format(
+        #     self.hyper_params["epochs"], time.ctime().replace(" ", "_")
+        # )
+        file_name = "trained model.pth"
         path = path + file_name
 
         checkpoints = self.save_checkpoint()
