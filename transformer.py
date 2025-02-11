@@ -8,14 +8,25 @@ import scipy.io as scio
 import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.preprocessing import MinMaxScaler
-
+import scipy.io as scio
+import glob
+import os
 from SAnD.core.model import SAnD
 from SAnD.utils.trainer import NeuralNetworkClassifier
 ######################################## Prueba Commit 07022025
 # Real Dataset Generator
-dataFile = 'dataset/ARC-FY/B0005'   # Modify this path
-# dataFile = '/Users/jason/NN4SOH/dataset/ARC-FY/B0005'
-raw = scio.loadmat(dataFile)['B0005'][0][0][0][0]
+dataFile = 'dataset/ARC-FY/B0006'   # Modify this path
+raw = scio.loadmat(dataFile)['B0006'][0][0][0][0]
+
+#data_dir = "dataset/ARC-FY/"  # Modifica esto según tu estructura de carpetas
+#mat_files = glob.glob(os.path.join(data_dir, "*.mat"))
+#datasets = {}
+#for mat_file in mat_files:
+#    file_name = os.path.basename(mat_file).split(".")[0]  # Extrae el nombre sin extensión
+#    datasets[file_name] = scio.loadmat(mat_file)  # Carga el contenido del archivo
+#for name, data in datasets.items():
+#    raw = data[name][0][0][0][0]  # Adaptar esto según la estructura interna del .mat
+#    print(f"Procesando {name}, tamaño de datos: {raw.shape}")
 
 # raw data parsing
 cycles = []
