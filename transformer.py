@@ -23,7 +23,7 @@ import glob
 import os
 from SAnD.core.model import SAnD
 from SAnD.utils.trainer import NeuralNetworkClassifier
-######################################## Prueba Commit 11022025
+######################################## Prueba Commit 13022025  en remoto
 # Real Dataset Generator
 dataFile = 'dataset/ARC-FY/B0006'   # Modify this path
 raw = scio.loadmat(dataFile)['B0006'][0][0][0][0]
