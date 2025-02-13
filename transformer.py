@@ -180,7 +180,7 @@ clf.fit(
      "val": val_loader,
      "test": test_loader},
     #epochs=80
-     epochs=1
+     epochs=80
 )
 
 # evaluating
