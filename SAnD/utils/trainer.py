@@ -158,33 +158,44 @@ class NeuralNetworkClassifier:
                 self.save_to_file(checkpoint_path)
             with self.experiment.train():
                 correct = 0.0
-                total = 0.0
+                total_loss = 0.0
+                total_samples = 0.
 
                 self.model.train()
                 pbar = tqdm.tqdm(total=len_of_train_dataset)
-                for x, y in loader["train"]:
-                    b_size = y.shape[0]
-                    total += y.shape[0]
-                    x = x.to(self.device) if isinstance(x, torch.Tensor) else [i.to(self.device) for i in x]
-                    y = y.to(self.device)
+                for x1, x2, label in loader["train"]:  # Ahora tenemos dos inputs + labels
+                    b_size = label.shape[0]
+                    total_samples += b_size
+                    x1 = x1.to(self.device)
+                    x2 = x2.to(self.device)
+                    label = label.to(self.device)
 
                     pbar.set_description(
                         "\033[36m" + "Training" + "\033[0m" + " - Epochs: {:03d}/{:03d}".format(epoch+1, epochs)
                     )
                     pbar.update(b_size)
 
+                    # Forward pass (obtenemos los embeddings)
+                    emb1, emb2 = self.model(x1, x2)
+
+                    #outputs = self.model(x)
+                    # Calcular pérdida contrastiva
+                    loss = self.criterion(emb1, emb2, label)
                     self.optimizer.zero_grad()
-                    outputs = self.model(x)
-                    loss = self.criterion(outputs, y)
                     loss.backward()
                     self.optimizer.step()
 
-                    _, predicted = torch.max(outputs, 1)
-                    correct += (predicted == y).sum().float().cpu().item()
+                    # Actualizar métricas
+                    total_loss += loss.cpu().item()
+                    avg_loss = total_loss / total_samples
 
-                    self.experiment.log_metric("predicted_soh", outputs.cpu().item(), step=epoch)
+                    # Registrar métricas en Comet o donde sea necesario
                     self.experiment.log_metric("loss", loss.cpu().item(), step=epoch)
-                    self.experiment.log_metric("accuracy", float(correct / total), step=epoch)
+                    self.experiment.log_metric("avg_loss", avg_loss, step=epoch)
+
+                    # Registrar distancia media entre pares (métrica clave en aprendizaje siamés)
+                    avg_distance = torch.nn.functional.pairwise_distance(emb1, emb2).mean().cpu().item()
+                    self.experiment.log_metric("avg_embedding_distance", avg_distance, step=epoch)
             if validation:
                 with self.experiment.validate():
                     with torch.no_grad():
