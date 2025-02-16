@@ -36,6 +36,7 @@ class SAnD(nn.Module):
     `Attend and Diagnose: Clinical Time Series Analysis Using Attention Models <https://arxiv.org/abs/1711.03905>`_
     Huan Song, Deepta Rajan, Jayaraman J. Thiagarajan, Andreas Spanias
     """
+
     def __init__(
             self, input_features: int, seq_len: int, n_heads: int, factor: int,
             n_class: int, n_layers: int, d_model: int = 128, dropout_rate: float = 0.2
@@ -52,49 +53,33 @@ class SAnD(nn.Module):
         x = self.clf(x)
         return x
 
-class TransformerSiamesReeflexSoH(nn.Module):
-    def __init__(self, feats):
-        super(TransformerSiamesReeflexSoH, self).__init__()
-        self.name = 'TransformerSiamesReeflexSoH'
-        self.lr = 0.004
-        self.batch = 128
-        self.n_feats = feats
-        self.n_window = 10
-        self.margin = 1
-        self.n = self.n_feats * self.n_window
 
-        self.pos_encoder = PositionalEncoding(2 * feats, 0.1, self.n_window)
-        encoder_layers = TransformerEncoderLayer(d_model=2 * feats, nhead=feats, dim_feedforward=16, dropout=0.1)
-        self.transformer_encoder = TransformerEncoder(encoder_layers, 1)
+class SAnD_Embedding(nn.Module):
+    """
+    Explicar aquí la mejora que se ha hecho del entrenamoiento siames con perdida contrastiva
+    """
+    def __init__(
+            self, input_features: int, seq_len: int, n_heads: int, factor: int,
+            n_class: int, n_layers: int, d_model: int = 128, dropout_rate: float = 0.2
+    ) -> None:
+        super(SAnD_Embedding, self).__init__()
+        self.encoder = EncoderLayerForSAnD(input_features, seq_len, n_heads, n_layers, d_model, dropout_rate)
+        self.dense_interpolation = modules.DenseInterpolation(seq_len, factor)
+        self.embedding_layer = nn.Linear(d_model * factor, 128)  # Capa de embeddings
 
-        decoder_layers = TransformerDecoderLayer(d_model=2 * feats, nhead=feats, dim_feedforward=16, dropout=0.1)
-        self.transformer_decoder = TransformerDecoder(decoder_layers, 1)
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        x = self.encoder(x)
+        x = self.dense_interpolation(x)
+        x = x.view(x.size(0), -1)  # Aplanamos la salida
+        x = self.embedding_layer(x)  # Proyectamos a 128 dimensiones
+        return x  # Embedding final
 
-        self.fcn = nn.Sequential(nn.Linear(2 * feats, feats), nn.Hardsigmoid())
+class SiameseSAnD(nn.Module):
+    def __init__(self, sand_model: SAnD_Embedding):
+        super(SiameseSAnD, self).__init__()
+        self.sand = sand_model  # Usamos la misma red en ambas ramas
 
-    def encode(self, src, c, tgt):
-        src = torch.cat((src, c), dim=2)
-        src = src * math.sqrt(self.n_feats)
-        src = self.pos_encoder(src)
-        memory = self.transformer_encoder(src)
-        tgt = tgt.repeat(1, 1, 2)
-        return tgt, memory
-
-    def forward_once(self, src, tgt):
-        c = torch.zeros_like(src)
-        x1 = self.fcn(self.transformer_decoder(*self.encode(src, c, tgt)))
-
-        c = (x1 - src) ** 2
-        x2 = self.fcn(self.transformer_decoder(*self.encode(src, c, tgt)))
-
-        return x2
-
-    def forward(self, src1, tgt1, src2, tgt2):
-        x1 = self.forward_once(src1, tgt1)
-        x2 = self.forward_once(src2, tgt2)
-
-        return x1, x2
-
-
-
-
+    def forward(self, x1: torch.Tensor, x2: torch.Tensor) -> torch.Tensor:
+        emb1 = self.sand(x1)  # Paso por SAnD
+        emb2 = self.sand(x2)  # Paso por SAnD
+        return emb1, emb2  # Devolvemos los embedding
