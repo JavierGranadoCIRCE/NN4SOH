@@ -200,7 +200,7 @@ model.load_state_dict(torch.load("save_params/trained model.pth"), strict=False)
 model.eval()
 
 # Convertir a TorchScript
-scripted_model = torch.jit.script(model)
+#scripted_model = torch.jit.script(model)
 
 # Guardar el modelo convertido
-scripted_model.save("save_params/modelo_torchscript.pt")
+#scripted_model.save("save_params/modelo_torchscript.pt")

@@ -3,6 +3,7 @@ import math
 import torch
 import numpy as np
 import torch.nn as nn
+from torch import Tensor
 
 
 class PositionalEncoding(nn.Module):
@@ -33,7 +34,9 @@ class ResidualBlock(nn.Module):
         self.layer = layer
         self.dropout = nn.Dropout(p=p)
         self.norm = nn.LayerNorm(embed_dim)
-        self.attn_weights = None
+        #self.attn_weights = None
+        self.attn_weights: Tensor = torch.empty(0)  # Inicializa como un tensor vacío
+
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """

@@ -192,12 +192,12 @@ class NeuralNetworkClassifier:
                     avg_loss = total_loss / total_samples
 
                     # Registrar métricas en Comet o donde sea necesario
-                    self.experiment.log_metric("loss", loss.cpu().item(), step=epoch)
-                    self.experiment.log_metric("avg_loss", avg_loss, step=epoch)
+                    #self.experiment.log_metric("loss", loss.cpu().item(), step=epoch)
+                    #self.experiment.log_metric("avg_loss", avg_loss, step=epoch)
 
                     # Registrar distancia media entre pares (métrica clave en aprendizaje siamés)
                     avg_distance = torch.nn.functional.pairwise_distance(emb1, emb2).mean().cpu().item()
-                    self.experiment.log_metric("avg_embedding_distance", avg_distance, step=epoch)
+                    #self.experiment.log_metric("avg_embedding_distance", avg_distance, step=epoch)
             if validation:
                 with self.experiment.validate():
                     with torch.no_grad():
@@ -226,9 +226,9 @@ class NeuralNetworkClassifier:
                             total_loss += val_loss.cpu().item()
 
                             # Registrar métricas en Comet o donde sea necesario
-                            self.experiment.log_metric("val_loss", val_loss.cpu().item(), step=epoch)
-                            self.experiment.log_metric("avg_val_loss", total_loss / total_samples, step=epoch)
-                            self.experiment.log_metric("avg_val_embedding_distance", avg_distance / total_samples, step=epoch)
+                            #self.experiment.log_metric("val_loss", val_loss.cpu().item(), step=epoch)
+                            #self.experiment.log_metric("avg_val_loss", total_loss / total_samples, step=epoch)
+                            #self.experiment.log_metric("avg_val_embedding_distance", avg_distance / total_samples, step=epoch)
             with self.experiment.test():
                 running_loss = 0.0
                 running_corrects = 0.0
@@ -258,10 +258,10 @@ class NeuralNetworkClassifier:
                         # Acumular pérdida
                         running_loss += test_loss.cpu().item()
 
-                        self.experiment.log_metric("loss", running_loss, step=epoch)
-                        self.experiment.log_metric("accuracy", float(running_corrects / total_samples))
+                        #self.experiment.log_metric("loss", running_loss, step=epoch)
+                        #self.experiment.log_metric("accuracy", float(running_corrects / total_samples))
                     pbar.close()
-                    acc = self.experiment.get_metric("accuracy")
+                    #acc = self.experiment.get_metric("accuracy")
 
             pbar.close()
 
@@ -316,7 +316,7 @@ class NeuralNetworkClassifier:
                     self.experiment.log_metric("loss", running_loss)
                     self.experiment.log_metric("accuracy", float(running_corrects / total))
                 pbar.close()
-            acc = self.experiment.get_metric("accuracy")
+            #acc = self.experiment.get_metric("accuracy")
 
         print("\033[33m" + "Evaluation finished. " + "\033[0m" + "Loss: {:.4f}".format(loss))
 
