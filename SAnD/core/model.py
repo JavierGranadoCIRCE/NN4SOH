@@ -70,7 +70,7 @@ class SAnD_Embedding(nn.Module):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = self.encoder(x)
         x = self.dense_interpolation(x)
-        x = x.view(x.size(0), -1)  # Aplanamos la salida
+        x = x.reshape(x.size(0), -1)
         x = self.embedding_layer(x)  # Proyectamos a 128 dimensiones
         return x  # Embedding final
 
