@@ -163,8 +163,12 @@ class NeuralNetworkClassifier:
 
                 self.model.train()
                 pbar = tqdm.tqdm(total=len_of_train_dataset)
+<<<<<<< HEAD
                 for x1, label in loader["train"]:  # Ahora tenemos dos inputs + labels
                     x2 = x1
+=======
+                for x1, x2, label in loader["train"]:  # Ahora tenemos dos inputs + labels
+>>>>>>> origin/master
                     b_size = label.shape[0]
                     total_samples += b_size
                     x1 = x1.to(self.device)
