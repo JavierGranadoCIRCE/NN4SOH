@@ -22,14 +22,14 @@ import scipy.io as scio
 import glob
 import os
 
-<<<<<<< HEAD
+
 from SAnD.core.modules import ContrastiveLoss
-=======
-from NN4SOH.SAnD.core.modules import ContrastiveLoss
->>>>>>> origin/master
+
+from SAnD.core.modules import ContrastiveLoss
+
 from SAnD.core.model import SAnD, SAnD_Embedding
 from SAnD.utils.trainer import NeuralNetworkClassifier
-######################################## Prueba 8 push pull local / servidor  16022025
+######################################## Prueba 10 push pull local / servidor  16022025
 
 # Real Dataset Generator
 dataFile = 'dataset/ARC-FY/B0006'   # Modify this path
