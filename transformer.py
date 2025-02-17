@@ -29,7 +29,7 @@ from SAnD.core.modules import ContrastiveLoss
 
 from SAnD.core.model import SAnD, SAnD_Embedding, SiameseSAnD
 from SAnD.utils.trainer import NeuralNetworkClassifier
-######################################## Prueba 10 push pull local / servidor  16022025
+######################################## Entrenamiento siames con dataset "dopado" 17022025
 
 # Real Dataset Generator
 dataFile = 'dataset/ARC-FY/B0006'   # Modify this path
