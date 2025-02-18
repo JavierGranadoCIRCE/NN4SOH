@@ -112,7 +112,7 @@ labels=torch.from_numpy(np.array(labels)).type(torch.FloatTensor)
 # data_set = list(zip(data, labels))
 # np.random.shuffle(data_set)
 # data, labels = data_set[0], data_set[1]
-ax_train = data[:7023]
+x_train = data[:7023]
 x_val = data[7023: 7093]
 x_test = data[7093:]
 y_train = labels[:7023]
