@@ -158,14 +158,18 @@ class NeuralNetworkClassifier:
                 self.save_to_file(checkpoint_path)
             with self.experiment.train():
                 correct = 0.0
-                total = 0.0
+                total_loss = 0.0
+                total_samples = 0.0
 
                 self.model.train()
                 pbar = tqdm.tqdm(total=len_of_train_dataset)
-                for x, y in loader["train"]:
+                for x1, y in loader["train"]:  # Ahora tenemos dos inputs + labels
+                    x2 = x1
+                #for x1, x2, y in loader["train"]:  # Ahora tenemos dos inputs + labels
                     b_size = y.shape[0]
-                    total += y.shape[0]
-                    x = x.to(self.device) if isinstance(x, torch.Tensor) else [i.to(self.device) for i in x]
+                    total_samples += y.shape[0]
+                    x1 = x1.to(self.device)if isinstance(x1, torch.Tensor) else [i.to(self.device) for i in x1]
+                    x2 = x2.to(self.device)if isinstance(x2, torch.Tensor) else [i.to(self.device) for i in x2]
                     y = y.to(self.device)
 
                     pbar.set_description(
@@ -173,18 +177,27 @@ class NeuralNetworkClassifier:
                     )
                     pbar.update(b_size)
 
+                    # Forward pass (obtenemos los embeddings)
+                    emb1, emb2 = self.model(x1, x2)
+
+                    #outputs = self.model(x)
+                    # Calcular pérdida contrastiva
+                    loss = self.criterion(emb1, emb2, y)
                     self.optimizer.zero_grad()
-                    outputs = self.model(x)
-                    loss = self.criterion(outputs, y)
                     loss.backward()
                     self.optimizer.step()
 
-                    _, predicted = torch.max(outputs, 1)
-                    correct += (predicted == y).sum().float().cpu().item()
+                    # Actualizar métricas
+                    total_loss += loss.cpu().item()
+                    avg_loss = total_loss / total_samples
 
-                    self.experiment.log_metric("predicted_soh", outputs.cpu().item(), step=epoch)
-                    self.experiment.log_metric("loss", loss.cpu().item(), step=epoch)
-                    self.experiment.log_metric("accuracy", float(correct / total), step=epoch)
+                    # Registrar métricas en Comet o donde sea necesario
+                    #self.experiment.log_metric("loss", loss.cpu().item(), step=epoch)
+                    #self.experiment.log_metric("avg_loss", avg_loss, step=epoch)
+
+                    # Registrar distancia media entre pares (métrica clave en aprendizaje siamés)
+                    avg_distance = torch.nn.functional.pairwise_distance(emb1, emb2).mean().cpu().item()
+                    #self.experiment.log_metric("avg_embedding_distance", avg_distance, step=epoch)
             if validation:
                 with self.experiment.validate():
                     with torch.no_grad():
@@ -192,25 +205,41 @@ class NeuralNetworkClassifier:
                         val_total = 0.0
 
                         self.model.eval()
-                        for x_val, y_val in loader["val"]:
+                        for x1_val, y_val in loader["val"]:
+                            x2_val = x1_val
                             val_total += y_val.shape[0]
-                            x_val = x_val.to(self.device) if isinstance(x_val, torch.Tensor) else [i_val.to(self.device) for i_val in x_val]
+                            x1_val = x1_val.to(self.device) if isinstance(x1_val, torch.Tensor) else [i_val.to(self.device) for i_val in x1_val]
+                            x2_val = x2_val.to(self.device) if isinstance(x2_val, torch.Tensor) else [i_val.to(self.device) for i_val in x2_val]
                             y_val = y_val.to(self.device)
 
-                            val_output = self.model(x_val)
-                            val_loss = self.criterion(val_output, y_val)
-                            _, val_pred = torch.max(val_output, 1)
-                            val_correct += (val_pred == y_val).sum().float().cpu().item()
+                            # Forward pass (obtenemos los embeddings)
+                            emb1_val, emb2_val = self.model(x1_val, x2_val)
+                            # Calcular pérdida contrastiva
+                            val_loss = self.criterion(emb1_val, emb2_val, y_val)
+                            #val_output = self.model(x_val)
+                            #val_loss = self.criterion(val_output, y_val)
+                            # Calcular distancia entre embeddings
+                            distance = torch.nn.functional.pairwise_distance(emb1_val, emb2_val).mean().cpu().item()
+                            avg_distance += distance
 
-                            self.experiment.log_metric("loss", val_loss.cpu().item(), step=epoch)
-                            self.experiment.log_metric("accuracy", float(val_correct / val_total), step=epoch)
+                            # Acumular pérdida
+                            total_loss += val_loss.cpu().item()
+
+                            # Registrar métricas en Comet o donde sea necesario
+                            #self.experiment.log_metric("val_loss", val_loss.cpu().item(), step=epoch)
+                            #self.experiment.log_metric("avg_val_loss", total_loss / total_samples, step=epoch)
+                            #self.experiment.log_metric("avg_val_embedding_distance", avg_distance / total_samples, step=epoch)
             with self.experiment.test():
                 running_loss = 0.0
                 running_corrects = 0.0
+                test_total = 0.0
                 with torch.no_grad():
-                    for x, y in loader["test"]:
-                        x = x.to(self.device) if isinstance(x, torch.Tensor) else [i_val.to(self.device) for i_val in x]
-                        y = y.to(self.device)
+                    for x1_test, y_test in loader["test"]:
+                        x2_test = x1_test
+                        test_total += y_test.shape[0]
+                        x1_test = x1_test.to(self.device) if isinstance(x1_test, torch.Tensor) else [i_val.to(self.device) for i_val in x1_test]
+                        x2_test = x2_test.to(self.device) if isinstance(x2_test, torch.Tensor) else [i_val.to(self.device) for i_val in x2_test]
+                        y_test = y_test.to(self.device)
                         # x=y[0]
                         # y=y[1]
                         # #x = x.to(self.device) if isinstance(x, torch.Tensor) else [i.to(self.device) for i in x]
@@ -218,19 +247,21 @@ class NeuralNetworkClassifier:
                         
                         pbar.set_description("\033[32m"+"Evaluating"+"\033[0m")
                         pbar.update(b_size)
+                        # Forward pass (obtenemos los embeddings)
+                        emb1_test, emb2_test = self.model(x1_test, x2_test)
+                        # Calcular pérdida contrastiva
+                        test_loss = self.criterion(emb1_test, emb2_test, y_val)
+                        # Calcular distancia entre embeddings
+                        distance = torch.nn.functional.pairwise_distance(emb1_test, emb2_test).mean().cpu().item()
+                        avg_distance += distance
 
-                        outputs = self.model(x)
-                        loss = self.criterion(outputs, y)
-                        _, predicted = torch.max(outputs, 1)
-                        correct += (predicted == y).sum().float().cpu().item()
+                        # Acumular pérdida
+                        running_loss += test_loss.cpu().item()
 
-                        running_loss += loss.cpu().item()
-                        running_corrects += torch.sum(predicted == y).float().cpu().item()
-
-                        self.experiment.log_metric("loss", running_loss, step=epoch)
-                        self.experiment.log_metric("accuracy", float(running_corrects / total))
+                        #self.experiment.log_metric("loss", running_loss, step=epoch)
+                        #self.experiment.log_metric("accuracy", float(running_corrects / total_samples))
                     pbar.close()
-                    acc = self.experiment.get_metric("accuracy")
+                    #acc = self.experiment.get_metric("accuracy")
 
             pbar.close()
 
@@ -285,7 +316,7 @@ class NeuralNetworkClassifier:
                     self.experiment.log_metric("loss", running_loss)
                     self.experiment.log_metric("accuracy", float(running_corrects / total))
                 pbar.close()
-            acc = self.experiment.get_metric("accuracy")
+            #acc = self.experiment.get_metric("accuracy")
 
         print("\033[33m" + "Evaluation finished. " + "\033[0m" + "Loss: {:.4f}".format(loss))
 

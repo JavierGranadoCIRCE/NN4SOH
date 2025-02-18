@@ -21,9 +21,15 @@ from sklearn.preprocessing import MinMaxScaler
 import scipy.io as scio
 import glob
 import os
-from SAnD.core.model import SAnD
+
+
+from SAnD.core.modules import ContrastiveLoss
+
+from SAnD.core.modules import ContrastiveLoss
+
+from SAnD.core.model import SAnD, SAnD_Embedding, SiameseSAnD
 from SAnD.utils.trainer import NeuralNetworkClassifier
-######################################## Prueba 8 push pull local / servidor  16022025
+######################################## Entrenamiento siames con dataset "dopado" 17022025
 
 # Real Dataset Generator
 #dataFile = 'dataset/ARC-FY/B0025'   # Modify this path
@@ -145,8 +151,8 @@ num_class = 1
 num_layers = 4
 
 clf = NeuralNetworkClassifier(
-    SAnD(in_feature, seq_len, n_heads, factor, num_class, num_layers),
-    nn.MSELoss(),
+    SiameseSAnD(SAnD_Embedding(in_feature, seq_len, n_heads, factor, num_class, num_layers)),
+    ContrastiveLoss(),
     optim.Adam, optimizer_config={"lr": 1e-4, "betas": (0.9, 0.98), "eps": 4e-09, "weight_decay": 5e-4},
     #experiment=Experiment("8mKGHiYeg2P7dZEFlvQv3PEzc")
     experiment = Experiment(api_key="Td3ICbNoK8hW14nwxZfp10SGN",
@@ -204,7 +210,7 @@ model.load_state_dict(torch.load("save_params/trained model.pth"), strict=False)
 model.eval()
 
 # Convertir a TorchScript
-scripted_model = torch.jit.script(model)
+#scripted_model = torch.jit.script(model)
 
 # Guardar el modelo convertido
-scripted_model.save("save_params/modelo_torchscript.pt")
+#scripted_model.save("save_params/modelo_torchscript.pt")

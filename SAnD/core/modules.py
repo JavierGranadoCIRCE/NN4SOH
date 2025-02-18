@@ -3,6 +3,7 @@ import math
 import torch
 import numpy as np
 import torch.nn as nn
+from torch import Tensor
 
 
 class PositionalEncoding(nn.Module):
@@ -33,7 +34,9 @@ class ResidualBlock(nn.Module):
         self.layer = layer
         self.dropout = nn.Dropout(p=p)
         self.norm = nn.LayerNorm(embed_dim)
-        self.attn_weights = None
+        #self.attn_weights = None
+        self.attn_weights: Tensor = torch.empty(0)  # Inicializa como un tensor vacío
+
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
@@ -142,3 +145,16 @@ class RegressionModule(nn.Module):
         x = x.contiguous().view(-1, int(self.factor * self.d_model))
         x = self.fc(x)
         return x
+
+class ContrastiveLoss(nn.Module):
+    def __init__(self, margin=1.0):
+        super(ContrastiveLoss, self).__init__()
+        self.margin = margin
+
+    def forward(self, emb1, emb2, label):
+        # Distancia euclidiana entre los embeddings
+        distance = torch.nn.functional.pairwise_distance(emb1, emb2)
+
+        # Loss: Minimiza distancia para pares similares, maximiza para diferentes
+        loss = (1 - label) * torch.pow(distance, 2) + label * torch.pow(torch.clamp(self.margin - distance, min=0.0), 2)
+        return loss.mean()

@@ -36,6 +36,7 @@ class SAnD(nn.Module):
     `Attend and Diagnose: Clinical Time Series Analysis Using Attention Models <https://arxiv.org/abs/1711.03905>`_
     Huan Song, Deepta Rajan, Jayaraman J. Thiagarajan, Andreas Spanias
     """
+
     def __init__(
             self, input_features: int, seq_len: int, n_heads: int, factor: int,
             n_class: int, n_layers: int, d_model: int = 128, dropout_rate: float = 0.2
@@ -53,7 +54,32 @@ class SAnD(nn.Module):
         return x
 
 
+class SAnD_Embedding(nn.Module):
+    """
+    Explicar aquí la mejora que se ha hecho del entrenamoiento siames con perdida contrastiva
+    """
+    def __init__(
+            self, input_features: int, seq_len: int, n_heads: int, factor: int,
+            n_class: int, n_layers: int, d_model: int = 128, dropout_rate: float = 0.2
+    ) -> None:
+        super(SAnD_Embedding, self).__init__()
+        self.encoder = EncoderLayerForSAnD(input_features, seq_len, n_heads, n_layers, d_model, dropout_rate)
+        self.dense_interpolation = modules.DenseInterpolation(seq_len, factor)
+        self.embedding_layer = nn.Linear(d_model * factor, 128)  # Capa de embeddings
 
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        x = self.encoder(x)
+        x = self.dense_interpolation(x)
+        x = x.reshape(x.size(0), -1)
+        x = self.embedding_layer(x)  # Proyectamos a 128 dimensiones
+        return x  # Embedding final
 
+class SiameseSAnD(nn.Module):
+    def __init__(self, sand_model: SAnD_Embedding):
+        super(SiameseSAnD, self).__init__()
+        self.sand = sand_model  # Usamos la misma red en ambas ramas
 
-
+    def forward(self, x1: torch.Tensor, x2: torch.Tensor) -> torch.Tensor:
+        emb1 = self.sand(x1)  # Paso por SAnD
+        emb2 = self.sand(x2)  # Paso por SAnD
+        return emb1, emb2  # Devolvemos los embedding
