@@ -26,18 +26,24 @@ from SAnD.utils.trainer import NeuralNetworkClassifier
 ######################################## Prueba 8 push pull local / servidor  16022025
 
 # Real Dataset Generator
-dataFile = 'dataset/ARC-FY/B0006'   # Modify this path
-raw = scio.loadmat(dataFile)['B0006'][0][0][0][0]
+#dataFile = 'dataset/ARC-FY/B0025'   # Modify this path
+#raw = scio.loadmat(dataFile)['B0025'][0][0][0][0]
 
-#data_dir = "dataset/ARC-FY/"  # Modifica esto según tu estructura de carpetas
-#mat_files = glob.glob(os.path.join(data_dir, "*.mat"))
-#datasets = {}
-#for mat_file in mat_files:
-#    file_name = os.path.basename(mat_file).split(".")[0]  # Extrae el nombre sin extensión
-#    datasets[file_name] = scio.loadmat(mat_file)  # Carga el contenido del archivo
-#for name, data in datasets.items():
-#    raw = data[name][0][0][0][0]  # Adaptar esto según la estructura interna del .mat
-#    print(f"Procesando {name}, tamaño de datos: {raw.shape}")
+data_folder = "dataset/ARC-FY/"  # Modifica esto según tu estructura de carpetas
+mat_files = glob.glob(os.path.join(data_folder, "*.mat"))
+# Lista para almacenar los datos concatenados
+raw = []
+# Cargar cada archivo y agregar sus datos a la lista `raw`
+for mat_file in mat_files:
+    data = scio.loadmat(mat_file)
+    key = list(data.keys())[-1]  # Toma la última clave que suele ser el nombre del dataset
+    extracted_data = data[key][0][0][0][0]  # Extrae los datos
+    raw.extend(extracted_data)  # Concatenar los datos a la lista
+
+print(f"Se han cargado {len(mat_files)} archivos. Tamaño total de raw: {len(raw)}")
+
+# dataFile = 'dataset/ARC-FY/B0005'   # Modify this path
+# raw = scio.loadmat(dataFile)['B0005'][0][0][0][0]
 
 # raw data parsing
 cycles = []
@@ -55,7 +61,11 @@ assert (len(cycles) == len(labels)), 'Number of measurements not matched!'
 data = []
 # calculate SOHs
 for lb in range(len(labels)):
-    labels[lb] = labels[lb][0] / 1.856487420818157  # TODO: first (largest) capacity found, but probably not the full cp
+    print(f"label {lb} de un total de {len(labels)}")
+    if (1974 < lb < 1979) or (2006 < lb < 2027):
+        labels[lb] = labels[lb+20][0] / 1.856487420818157  # TODO: first (largest) capacity found, but probably not the full cp
+    else:
+        labels[lb] = labels[lb][0] / 1.856487420818157  # TODO: first (largest) capacity found, but probably not the full cp
 labels = labels * 3
 
 for t0 in [0, 1.5, 3]:
@@ -95,12 +105,12 @@ labels=torch.from_numpy(np.array(labels)).type(torch.FloatTensor)
 # data_set = list(zip(data, labels))
 # np.random.shuffle(data_set)
 # data, labels = data_set[0], data_set[1]
-x_train = data[:400]
-x_val = data[400: 450]
-x_test = data[450:]
-y_train = labels[:400]
-y_val = labels[400: 450]
-y_test = labels[450:]
+ax_train = data[:7023]
+x_val = data[7023: 7093]
+x_test = data[7093:]
+y_train = labels[:7023]
+y_val = labels[7023: 7093]
+y_test = labels[7093:]
 train_ds = TensorDataset(x_train, y_train)
 val_ds = TensorDataset(x_val, y_val)
 test_ds = TensorDataset(x_test, y_test)
