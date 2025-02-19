@@ -52,8 +52,8 @@ for mat_file in mat_files:
 
 print(f"Se han cargado {len(mat_files)} archivos. Tamaño total de raw: {len(raw)}")
 
-# dataFile = 'dataset/ARC-FY/B0005'   # Modify this path
-# raw = scio.loadmat(dataFile)['B0005'][0][0][0][0]
+#dataFile = 'dataset/ARC-FY/B0005'   # Modify this path
+#raw = scio.loadmat(dataFile)['B0005'][0][0][0][0]
 
 # raw data parsing
 cycles = []
@@ -118,9 +118,9 @@ labels=torch.from_numpy(np.array(labels)).type(torch.FloatTensor)
 x_train = data[:7023]
 x_val = data[7023: 7093]
 x_test = data[7093:]
-y_train = labels[:7023]
-y_val = labels[7023: 7093]
-y_test = labels[7093:]
+y_train = labels[:7023] ##7023
+y_val = labels[7023: 7093]#7023: 7093
+y_test = labels[7093:]#7093
 train_ds = TensorDataset(x_train, y_train)
 val_ds = TensorDataset(x_val, y_val)
 test_ds = TensorDataset(x_test, y_test)

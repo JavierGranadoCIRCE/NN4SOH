@@ -15,6 +15,7 @@ class EncoderLayerForSAnD(nn.Module):
         ])
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        x = x.unsqueeze(0)  # Ahora x1 tiene la forma (1, 400, 3)
         x = x.transpose(1, 2)
         x = self.input_embedding(x)
         x = x.transpose(1, 2)
