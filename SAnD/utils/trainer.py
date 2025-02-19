@@ -9,6 +9,7 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
 from sklearn.metrics import confusion_matrix
+from NN4SOH.SAnD.utils.functions import generar_pares_aleatorios
 
 
 class NeuralNetworkClassifier:
@@ -163,14 +164,15 @@ class NeuralNetworkClassifier:
 
                 self.model.train()
                 pbar = tqdm.tqdm(total=len_of_train_dataset)
+
                 for x1, y in loader["train"]:  # Ahora tenemos dos inputs + labels
-                    x2 = x1
+                    x1, x2, y_cont = generar_pares_aleatorios(x1, y, umbral_soh=0.02)
                 #for x1, x2, y in loader["train"]:  # Ahora tenemos dos inputs + labels
                     b_size = y.shape[0]
                     total_samples += y.shape[0]
                     x1 = x1.to(self.device)if isinstance(x1, torch.Tensor) else [i.to(self.device) for i in x1]
                     x2 = x2.to(self.device)if isinstance(x2, torch.Tensor) else [i.to(self.device) for i in x2]
-                    y = y.to(self.device)
+                    y_cont = y_cont.to(self.device)
 
                     pbar.set_description(
                         "\033[36m" + "Training" + "\033[0m" + " - Epochs: {:03d}/{:03d}".format(epoch+1, epochs)
@@ -182,7 +184,7 @@ class NeuralNetworkClassifier:
 
                     #outputs = self.model(x)
                     # Calcular pérdida contrastiva
-                    loss = self.criterion(emb1, emb2, y)
+                    loss = self.criterion(emb1, emb2, y_cont)
                     self.optimizer.zero_grad()
                     loss.backward()
                     self.optimizer.step()

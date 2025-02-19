@@ -1,6 +1,6 @@
 import torch
 import numpy as np
-
+import random
 
 def positional_encoding(n_positions: int, hidden_dim: int) -> torch.Tensor:
     def calc_angles(pos, i):
@@ -44,6 +44,47 @@ def subsequent_mask(size: int) -> torch.Tensor:
     mask = np.triu(np.ones(attn_shape), k=1).astype("float32")
     mask = torch.from_numpy(mask) == 0
     return mask.float()
+
+def generar_pares_aleatorios(data, labels, umbral_soh=0.02):
+    """
+    Genera pares aleatorios de ejemplos de carga junto con sus etiquetas 0 o 1
+    según si tienen un estado de salud similar o diferente.
+
+    Parámetros:
+    - data: lista de ciclos de carga (cada elemento es una secuencia de carga)
+    - labels: lista de valores de SoH correspondientes a cada ciclo
+    - num_pares: número total de pares a generar
+    - umbral_soh: diferencia máxima entre SoH para considerar que es el mismo estado
+
+    Retorna:
+    - X_pairs: lista con los pares de ciclos de carga
+    - y_pairs: lista con etiquetas 0 o 1 según su estado de salud
+    """
+
+    X_pairs = []
+    y_pairs = []
+
+    total_ciclos = len(data)
+
+
+    # Seleccionar dos ciclos aleatorios
+    i, j = random.sample(range(total_ciclos), 2)
+
+    ciclo_1 = data[i]
+    ciclo_2 = data[j]
+    soh_1 = labels[i]
+    soh_2 = labels[j]
+
+    # Asignar etiqueta: 1 si los SoH son similares, 0 si son diferentes
+    y = 1 if abs(soh_1 - soh_2) < umbral_soh else 0
+
+    # Guardar el par y su etiqueta
+    X_pairs.append((ciclo_1, ciclo_2))
+    y_pairs.append(y)
+
+    return X_pairs, y_pairs
+
+
 
 
 class ScheduledOptimizer:

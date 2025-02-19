@@ -70,7 +70,7 @@ assert (len(cycles) == len(labels)), 'Number of measurements not matched!'
 data = []
 # calculate SOHs
 for lb in range(len(labels)):
-    print(f"label {lb} de un total de {len(labels)}")
+    #print(f"label {lb} de un total de {len(labels)}")
     if (1974 < lb < 1979) or (2006 < lb < 2027):
         labels[lb] = labels[lb+20][0] / 1.856487420818157  # TODO: first (largest) capacity found, but probably not the full cp
     else:
@@ -127,32 +127,36 @@ train_loader = DataLoader(train_ds, batch_size=1)
 val_loader = DataLoader(val_ds, batch_size=1)
 test_loader = DataLoader(test_ds, batch_size=1)
 
-# Simulación de x_train (descomenta si quieres probar sin los datos reales)
+# ##########################################################################
+# # PLoteo de los coclos de carga del dataset completo
+#
+#
+# # Etiquetas de las variables
+# variables = ["Tensión (V)", "Corriente (A)", "Temperatura (°C)"]
+# colores = ["b", "r", "g"]  # Azul, rojo y verde
+#
+# for i in range(x_train.shape[0]):  # Recorremos los ciclos de carga
+#     plt.figure(figsize=(10, 5))
+#
+#     # Dibujar las 3 variables en distintos colores
+#     for j in range(3):
+#         plt.plot(x_train[i, :, j], color=colores[j], label=variables[j])
+#
+#     soh_value = y_train[i]  # Obtener el SoH del ciclo actual
+#     plt.xlabel("Tiempo (puntos de muestreo)")
+#     plt.ylabel("Valor")
+#     plt.title(f"Ciclo de carga {i+1} - SoH: {soh_value:.2f}%")  # Agregar el SoH en el título
+#     plt.legend()
+#     plt.grid()
+#
+#
+#     plt.show()
+#
+#     input("Presiona Enter para ver el siguiente ciclo...")  # Espera antes de mostrar el siguiente gráfico
+#     plt.close()
+# # PLoteo de los coclos de carga del dataset completo
+# ##########################################################################
 
-
-# Etiquetas de las variables
-variables = ["Tensión (V)", "Corriente (A)", "Temperatura (°C)"]
-colores = ["b", "r", "g"]  # Azul, rojo y verde
-
-for i in range(x_train.shape[0]):  # Recorremos los ciclos de carga
-    plt.figure(figsize=(10, 5))
-
-    # Dibujar las 3 variables en distintos colores
-    for j in range(3):
-        plt.plot(x_train[i, :, j], color=colores[j], label=variables[j])
-
-    soh_value = y_train[i]  # Obtener el SoH del ciclo actual
-    plt.xlabel("Tiempo (puntos de muestreo)")
-    plt.ylabel("Valor")
-    plt.title(f"Ciclo de carga {i+1} - SoH: {soh_value:.2f}%")  # Agregar el SoH en el título
-    plt.legend()
-    plt.grid()
-
-
-    plt.show()
-
-    input("Presiona Enter para ver el siguiente ciclo...")  # Espera antes de mostrar el siguiente gráfico
-    plt.close()
 
 
 # Fake Dataset Generater
