@@ -30,6 +30,7 @@ from SAnD.core.modules import ContrastiveLoss
 from SAnD.core.modules import ContrastiveLoss
 
 from SAnD.core.model import SAnD, SAnD_Embedding, SiameseSAnD
+from SAnD.utils.functions import generar_pares_aleatorios
 from SAnD.utils.trainer import NeuralNetworkClassifier
 ######################################## Commit nueva rama merge entre Dataset complet y entrenamiento Siames 18022025
 ######################################## Commit nueva rama merge entre Dataset complet y entrenamiento Siames 18022025
@@ -126,6 +127,7 @@ test_ds = TensorDataset(x_test, y_test)
 train_loader = DataLoader(train_ds, batch_size=1)
 val_loader = DataLoader(val_ds, batch_size=1)
 test_loader = DataLoader(test_ds, batch_size=1)
+#x1_cont, x2_cont, y_cont = generar_pares_aleatorios(x_train, y_train, umbral_soh=0.02)
 
 # ##########################################################################
 # # PLoteo de los coclos de carga del dataset completo
@@ -224,11 +226,10 @@ clf = NeuralNetworkClassifier(
 # )
 
 # training network
-clf.fit(
+clf.fit(x_train, y_train,
     {"train": train_loader,
      "val": val_loader,
      "test": test_loader},
-    #epochs=80
      epochs=80
 )
 

@@ -9,7 +9,8 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
 from sklearn.metrics import confusion_matrix
-from NN4SOH.SAnD.utils.functions import generar_pares_aleatorios
+from SAnD.utils.functions import generar_pares_aleatorios
+
 
 
 class NeuralNetworkClassifier:
@@ -106,6 +107,7 @@ class NeuralNetworkClassifier:
         self.__num_classes = None
         self._is_parallel = False
 
+
         # if torch.cuda.device_count() > 1:
         #     self.model = nn.DataParallel(self.model)
         #     self._is_parallel = True
@@ -113,7 +115,7 @@ class NeuralNetworkClassifier:
         #     notice = "Running on {} GPUs.".format(torch.cuda.device_count())
         #     print("\033[33m" + notice + "\033[0m")
 
-    def fit(self, loader: Dict[str, DataLoader], epochs: int, checkpoint_path: str = None, validation: bool = True) -> None:
+    def fit(self,x_train, y_train, loader: Dict[str, DataLoader], epochs: int, checkpoint_path: str = None, validation: bool = True) -> None:
         """
         | The method of training your PyTorch Model.
         | With the assumption, This method use for training network for classification.
@@ -165,14 +167,14 @@ class NeuralNetworkClassifier:
                 self.model.train()
                 pbar = tqdm.tqdm(total=len_of_train_dataset)
 
-                for x1, y in loader["train"]:  # Ahora tenemos dos inputs + labels
-                    x1, x2, y_cont = generar_pares_aleatorios(x1, y, umbral_soh=0.02)
-                #for x1, x2, y in loader["train"]:  # Ahora tenemos dos inputs + labels
-                    b_size = y.shape[0]
-                    total_samples += y.shape[0]
-                    x1 = x1.to(self.device)if isinstance(x1, torch.Tensor) else [i.to(self.device) for i in x1]
-                    x2 = x2.to(self.device)if isinstance(x2, torch.Tensor) else [i.to(self.device) for i in x2]
-                    y_cont = y_cont.to(self.device)
+                for x1, y in loader["train"].dataset:  # Ahora tenemos dos inputs + labels
+                    x1_cont, x2_cont, y_cont = generar_pares_aleatorios(x_train, y_train, umbral_soh=0.02)
+                    #for x1, x2, y in loader["train"]:  # Ahora tenemos dos inputs + labels
+                    b_size = len_of_train_dataset
+                    total_samples += len_of_train_dataset
+                    x1_cont = x1_cont.to(self.device)if isinstance(x1_cont, torch.Tensor) else [i.to(self.device) for i in x1_cont]
+                    x2_cont = x2_cont.to(self.device)if isinstance(x2_cont, torch.Tensor) else [i.to(self.device) for i in x2_cont]
+                    #y_cont = y_cont.to(self.device)
 
                     pbar.set_description(
                         "\033[36m" + "Training" + "\033[0m" + " - Epochs: {:03d}/{:03d}".format(epoch+1, epochs)
@@ -180,7 +182,7 @@ class NeuralNetworkClassifier:
                     pbar.update(b_size)
 
                     # Forward pass (obtenemos los embeddings)
-                    emb1, emb2 = self.model(x1, x2)
+                    emb1, emb2 = self.model(x1_cont, x2_cont)
 
                     #outputs = self.model(x)
                     # Calcular pérdida contrastiva

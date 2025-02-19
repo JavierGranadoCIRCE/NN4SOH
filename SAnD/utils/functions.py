@@ -1,6 +1,8 @@
 import torch
 import numpy as np
 import random
+from torch.utils.data import DataLoader
+from typing import Dict
 
 def positional_encoding(n_positions: int, hidden_dim: int) -> torch.Tensor:
     def calc_angles(pos, i):
@@ -45,7 +47,7 @@ def subsequent_mask(size: int) -> torch.Tensor:
     mask = torch.from_numpy(mask) == 0
     return mask.float()
 
-def generar_pares_aleatorios(data, labels, umbral_soh=0.02):
+def generar_pares_aleatorios(x_train, y_train, umbral_soh=0.02):
     """
     Genera pares aleatorios de ejemplos de carga junto con sus etiquetas 0 o 1
     según si tienen un estado de salud similar o diferente.
@@ -64,16 +66,16 @@ def generar_pares_aleatorios(data, labels, umbral_soh=0.02):
     X_pairs = []
     y_pairs = []
 
-    total_ciclos = len(data)
+    total_ciclos = len(x_train)
 
 
     # Seleccionar dos ciclos aleatorios
     i, j = random.sample(range(total_ciclos), 2)
 
-    ciclo_1 = data[i]
-    ciclo_2 = data[j]
-    soh_1 = labels[i]
-    soh_2 = labels[j]
+    ciclo_1 = x_train[i]
+    ciclo_2 = x_train[j]
+    soh_1 = y_train[i]
+    soh_2 = y_train[j]
 
     # Asignar etiqueta: 1 si los SoH son similares, 0 si son diferentes
     y = 1 if abs(soh_1 - soh_2) < umbral_soh else 0
@@ -81,8 +83,11 @@ def generar_pares_aleatorios(data, labels, umbral_soh=0.02):
     # Guardar el par y su etiqueta
     X_pairs.append((ciclo_1, ciclo_2))
     y_pairs.append(y)
+    x1 = ciclo_1
+    x2 = ciclo_2
+    y_cont = y
 
-    return X_pairs, y_pairs
+    return x1, x2, y_cont
 
 
 
