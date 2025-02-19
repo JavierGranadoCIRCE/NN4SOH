@@ -21,6 +21,8 @@ from sklearn.preprocessing import MinMaxScaler
 import scipy.io as scio
 import glob
 import os
+import matplotlib.pyplot as plt
+import numpy as np
 
 
 from SAnD.core.modules import ContrastiveLoss
@@ -124,6 +126,34 @@ test_ds = TensorDataset(x_test, y_test)
 train_loader = DataLoader(train_ds, batch_size=1)
 val_loader = DataLoader(val_ds, batch_size=1)
 test_loader = DataLoader(test_ds, batch_size=1)
+
+# Simulación de x_train (descomenta si quieres probar sin los datos reales)
+
+
+# Etiquetas de las variables
+variables = ["Tensión (V)", "Corriente (A)", "Temperatura (°C)"]
+colores = ["b", "r", "g"]  # Azul, rojo y verde
+
+for i in range(x_train.shape[0]):  # Recorremos los ciclos de carga
+    plt.figure(figsize=(10, 5))
+
+    # Dibujar las 3 variables en distintos colores
+    for j in range(3):
+        plt.plot(x_train[i, :, j], color=colores[j], label=variables[j])
+
+    soh_value = y_train[i]  # Obtener el SoH del ciclo actual
+    plt.xlabel("Tiempo (puntos de muestreo)")
+    plt.ylabel("Valor")
+    plt.title(f"Ciclo de carga {i+1} - SoH: {soh_value:.2f}%")  # Agregar el SoH en el título
+    plt.legend()
+    plt.grid()
+
+
+    plt.show()
+
+    input("Presiona Enter para ver el siguiente ciclo...")  # Espera antes de mostrar el siguiente gráfico
+    plt.close()
+
 
 # Fake Dataset Generater
 # x_train = torch.randn(1024, 256, 23)    # [N, seq_len, features]
