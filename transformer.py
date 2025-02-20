@@ -189,7 +189,9 @@ num_layers = 4
 
 clf = NeuralNetworkClassifier(
     SiameseSAnD(SAnD_Embedding(in_feature, seq_len, n_heads, factor, num_class, num_layers)),
+    SAnD(in_feature, seq_len, n_heads, factor, num_class, num_layers),
     ContrastiveLoss(),
+    nn.MSELoss(),
     optim.Adam, optimizer_config={"lr": 1e-4, "betas": (0.9, 0.98), "eps": 4e-09, "weight_decay": 5e-4},
     #experiment=Experiment("8mKGHiYeg2P7dZEFlvQv3PEzc")
     experiment = Experiment(api_key="Td3ICbNoK8hW14nwxZfp10SGN",
