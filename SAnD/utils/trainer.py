@@ -197,11 +197,11 @@ class NeuralNetworkClassifier:
 
                     # Registrar métricas en Comet o donde sea necesario
                     self.experiment.log_metric("loss", loss.cpu().item(), step=epoch)
-                    #self.experiment.log_metric("avg_loss", avg_loss, step=epoch)
+                    self.experiment.log_metric("avg_loss", avg_loss, step=epoch)
 
                     # Registrar distancia media entre pares (métrica clave en aprendizaje siamés)
                     avg_distance = torch.nn.functional.pairwise_distance(emb1, emb2).mean().cpu().item()
-                    #self.experiment.log_metric("avg_embedding_distance", avg_distance, step=epoch)
+                    self.experiment.log_metric("avg_embedding_distance", avg_distance, step=epoch)
             if validation:
                 with self.experiment.validate():
                     with torch.no_grad():
@@ -231,8 +231,8 @@ class NeuralNetworkClassifier:
 
                             # Registrar métricas en Comet o donde sea necesario
                             self.experiment.log_metric("val_loss", val_loss.cpu().item(), step=epoch)
-                            #self.experiment.log_metric("avg_val_loss", total_loss / total_samples, step=epoch)
-                            #self.experiment.log_metric("avg_val_embedding_distance", avg_distance / total_samples, step=epoch)
+                            self.experiment.log_metric("avg_val_loss", total_loss / total_samples, step=epoch)
+                            self.experiment.log_metric("avg_val_embedding_distance", avg_distance / total_samples, step=epoch)
             with self.experiment.test():
                 running_loss = 0.0
                 running_corrects = 0.0
