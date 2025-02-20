@@ -115,12 +115,12 @@ labels=torch.from_numpy(np.array(labels)).type(torch.FloatTensor)
 # data_set = list(zip(data, labels))
 # np.random.shuffle(data_set)
 # data, labels = data_set[0], data_set[1]
-x_train = data[:100]
-x_val = data[100: 200]
-x_test = data[200: 300]
-y_train = labels[:100] ##7023
-y_val = labels[100: 200]#7023: 7093
-y_test = labels[200: 300]#7093
+x_train = data[:7023]
+x_val = data[7023: 7093]
+x_test = data[7093:]
+y_train = labels[:7023] ##7023
+y_val = labels[7023: 7093]#7023: 7093
+y_test = labels[7093:]#7093
 train_ds = TensorDataset(x_train, y_train)
 val_ds = TensorDataset(x_val, y_val)
 test_ds = TensorDataset(x_test, y_test)
@@ -226,8 +226,8 @@ clf = NeuralNetworkClassifier(
 # )
 
 # training network
-clf.fit(x_train, y_train,
-    {"train": train_loader,
+clf.fit(x_train, y_train, x_val, y_val, x_test, y_test,
+        {"train": train_loader,
      "val": val_loader,
      "test": test_loader},
      epochs=80

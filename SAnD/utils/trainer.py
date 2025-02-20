@@ -115,7 +115,7 @@ class NeuralNetworkClassifier:
         #     notice = "Running on {} GPUs.".format(torch.cuda.device_count())
         #     print("\033[33m" + notice + "\033[0m")
 
-    def fit(self,x_train, y_train, loader: Dict[str, DataLoader], epochs: int, checkpoint_path: str = None, validation: bool = True) -> None:
+    def fit(self,x_train, y_train, x_val, y_val, x_test, y_test, loader: Dict[str, DataLoader], epochs: int, checkpoint_path: str = None, validation: bool = True) -> None:
         """
         | The method of training your PyTorch Model.
         | With the assumption, This method use for training network for classification.
@@ -196,7 +196,7 @@ class NeuralNetworkClassifier:
                     avg_loss = total_loss / total_samples
 
                     # Registrar métricas en Comet o donde sea necesario
-                    #self.experiment.log_metric("loss", loss.cpu().item(), step=epoch)
+                    self.experiment.log_metric("loss", loss.cpu().item(), step=epoch)
                     #self.experiment.log_metric("avg_loss", avg_loss, step=epoch)
 
                     # Registrar distancia media entre pares (métrica clave en aprendizaje siamés)
@@ -209,17 +209,17 @@ class NeuralNetworkClassifier:
                         val_total = 0.0
 
                         self.model.eval()
-                        for x1_val, y_val in loader["val"]:
-                            x2_val = x1_val
-                            val_total += y_val.shape[0]
-                            x1_val = x1_val.to(self.device) if isinstance(x1_val, torch.Tensor) else [i_val.to(self.device) for i_val in x1_val]
-                            x2_val = x2_val.to(self.device) if isinstance(x2_val, torch.Tensor) else [i_val.to(self.device) for i_val in x2_val]
-                            y_val = y_val.to(self.device)
+                        for x1_validation, y_validation in loader["val"]:
+                            x1_cont_val, x2_cont_val, y_cont_val = generar_pares_aleatorios(x_val, y_val, umbral_soh=0.02)
+                            val_total += y_validation.shape[0]
+                            x1_cont_val = x1_cont_val.to(self.device) if isinstance(x1_cont_val, torch.Tensor) else [i_val.to(self.device) for i_val in x1_cont_val]
+                            x2_cont_val = x2_cont_val.to(self.device) if isinstance(x2_cont_val, torch.Tensor) else [i_val.to(self.device) for i_val in x2_cont_val]
+                            #y_val = y_val.to(self.device)
 
                             # Forward pass (obtenemos los embeddings)
-                            emb1_val, emb2_val = self.model(x1_val, x2_val)
+                            emb1_val, emb2_val = self.model(x1_cont_val, x2_cont_val)
                             # Calcular pérdida contrastiva
-                            val_loss = self.criterion(emb1_val, emb2_val, y_val)
+                            val_loss = self.criterion(emb1_val, emb2_val, y_cont_val)
                             #val_output = self.model(x_val)
                             #val_loss = self.criterion(val_output, y_val)
                             # Calcular distancia entre embeddings
@@ -230,7 +230,7 @@ class NeuralNetworkClassifier:
                             total_loss += val_loss.cpu().item()
 
                             # Registrar métricas en Comet o donde sea necesario
-                            #self.experiment.log_metric("val_loss", val_loss.cpu().item(), step=epoch)
+                            self.experiment.log_metric("val_loss", val_loss.cpu().item(), step=epoch)
                             #self.experiment.log_metric("avg_val_loss", total_loss / total_samples, step=epoch)
                             #self.experiment.log_metric("avg_val_embedding_distance", avg_distance / total_samples, step=epoch)
             with self.experiment.test():
@@ -238,12 +238,12 @@ class NeuralNetworkClassifier:
                 running_corrects = 0.0
                 test_total = 0.0
                 with torch.no_grad():
-                    for x1_test, y_test in loader["test"]:
-                        x2_test = x1_test
-                        test_total += y_test.shape[0]
-                        x1_test = x1_test.to(self.device) if isinstance(x1_test, torch.Tensor) else [i_val.to(self.device) for i_val in x1_test]
-                        x2_test = x2_test.to(self.device) if isinstance(x2_test, torch.Tensor) else [i_val.to(self.device) for i_val in x2_test]
-                        y_test = y_test.to(self.device)
+                    for x1_testing, y_testing in loader["test"]:
+                        x1_cont_test, x2_cont_test, y_cont_test = generar_pares_aleatorios(x_test, y_test, umbral_soh=0.02)
+                        test_total += y_testing.shape[0]
+                        x1_cont_test = x1_cont_test.to(self.device) if isinstance(x1_cont_test, torch.Tensor) else [i_val.to(self.device) for i_val in x1_cont_test]
+                        x2_cont_test = x2_cont_test.to(self.device) if isinstance(x2_cont_test, torch.Tensor) else [i_val.to(self.device) for i_val in x2_cont_test]
+                        #y_test = y_test.to(self.device)
                         # x=y[0]
                         # y=y[1]
                         # #x = x.to(self.device) if isinstance(x, torch.Tensor) else [i.to(self.device) for i in x]
@@ -252,9 +252,9 @@ class NeuralNetworkClassifier:
                         pbar.set_description("\033[32m"+"Evaluating"+"\033[0m")
                         pbar.update(b_size)
                         # Forward pass (obtenemos los embeddings)
-                        emb1_test, emb2_test = self.model(x1_test, x2_test)
+                        emb1_test, emb2_test = self.model(x1_cont_test, x2_cont_test)
                         # Calcular pérdida contrastiva
-                        test_loss = self.criterion(emb1_test, emb2_test, y_val)
+                        test_loss = self.criterion(emb1_test, emb2_test, y_cont_test)
                         # Calcular distancia entre embeddings
                         distance = torch.nn.functional.pairwise_distance(emb1_test, emb2_test).mean().cpu().item()
                         avg_distance += distance
@@ -262,8 +262,8 @@ class NeuralNetworkClassifier:
                         # Acumular pérdida
                         running_loss += test_loss.cpu().item()
 
-                        #self.experiment.log_metric("loss", running_loss, step=epoch)
-                        #self.experiment.log_metric("accuracy", float(running_corrects / total_samples))
+                        self.experiment.log_metric("loss", running_loss, step=epoch)
+                        self.experiment.log_metric("accuracy", float(running_corrects / total_samples))
                     pbar.close()
                     #acc = self.experiment.get_metric("accuracy")
 
