@@ -86,7 +86,10 @@ def generar_pares_aleatorios(x_train, y_train, umbral_soh=0.02):
     x1 = ciclo_1
     x2 = ciclo_2
     y_cont = y
-
+    if x1.dim() == 2:  # Si x1 tiene la forma (400, 3)
+        x1 = x1.unsqueeze(0)  # Convierte en (1, 400, 3)
+    if x2.dim() == 2:  # Si x2 tiene la forma (400, 3)
+        x2 = x2.unsqueeze(0)  # Convierte en (1, 400, 3)
     return x1, x2, y_cont
 
 

@@ -167,11 +167,11 @@ class NeuralNetworkClassifier:
                 self.model.train()
                 pbar = tqdm.tqdm(total=len_of_train_dataset)
 
-                for x1, y in loader["train"].dataset:  # Ahora tenemos dos inputs + labels
+                for x1, y in loader["train"]:  # Ahora tenemos dos inputs + labels
                     x1_cont, x2_cont, y_cont = generar_pares_aleatorios(x_train, y_train, umbral_soh=0.02)
                     #for x1, x2, y in loader["train"]:  # Ahora tenemos dos inputs + labels
-                    b_size = len_of_train_dataset
-                    total_samples += len_of_train_dataset
+                    b_size = y.shape[0]
+                    total_samples += y.shape[0]
                     x1_cont = x1_cont.to(self.device)if isinstance(x1_cont, torch.Tensor) else [i.to(self.device) for i in x1_cont]
                     x2_cont = x2_cont.to(self.device)if isinstance(x2_cont, torch.Tensor) else [i.to(self.device) for i in x2_cont]
                     #y_cont = y_cont.to(self.device)
