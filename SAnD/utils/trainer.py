@@ -118,7 +118,7 @@ class NeuralNetworkClassifier:
         #     notice = "Running on {} GPUs.".format(torch.cuda.device_count())
         #     print("\033[33m" + notice + "\033[0m")
 
-    def fit(self,x_train, y_train, x_val, y_val, x_test, y_test, loader: Dict[str, DataLoader], epochs: int, checkpoint_path: str = None, validation: bool = True) -> None:
+    def fit(self,x_train, y_train, x_val, y_val, x_test, y_test, loader: Dict[str, DataLoader], epochs: int, checkpoint_path: str = None, validation: bool = True, test: bool = True) -> None:
         """
         | The method of training your PyTorch Model.
         | With the assumption, This method use for training network for classification.
@@ -156,6 +156,10 @@ class NeuralNetworkClassifier:
         if validation:
             len_of_val_dataset = len(loader["val"].dataset)
             self.hyper_params["val_ds_size"] = len_of_val_dataset
+
+        if test:
+            len_of_test_dataset = len(loader["test"].dataset)
+            self.hyper_params["test_ds_size"] = len_of_val_dataset
 
         self.experiment.log_parameters(self.hyper_params)
 
@@ -195,66 +199,88 @@ class NeuralNetworkClassifier:
                     self.optimizer_t.step()
 
                     # Actualizar métricas
-                    total_loss += loss.cpu().item()
+                    total_loss += loss.item()
                     avg_loss = total_loss / total_samples
 
                     # Registrar métricas en Comet o donde sea necesario
-                    self.experiment.log_metric("loss", loss.cpu().item(), step=epoch)
-                    self.experiment.log_metric("avg_loss", avg_loss, step=epoch)
+                    self.experiment.log_metric("loss", loss.item(), step=epoch)
+                    # self.experiment.log_metric("avg_loss", avg_loss, step=epoch)
 
                     # Registrar distancia media entre pares (métrica clave en aprendizaje siamés)
-                    avg_distance = torch.nn.functional.pairwise_distance(emb1, emb2).mean().cpu().item()
-                    self.experiment.log_metric("avg_embedding_distance", avg_distance, step=epoch)
+                    avg_distance = torch.nn.functional.pairwise_distance(emb1, emb2).mean().item()
+                    # self.experiment.log_metric("avg_embedding_distance", avg_distance, step=epoch)
             if validation:
+                len_of_val_dataset = len(loader["val"].dataset)
                 with self.experiment.validate():
                     with torch.no_grad():
                         val_correct = 0.0
                         val_total = 0.0
 
                         self.model_v.eval()
+                        pbar = tqdm.tqdm(total=len_of_val_dataset)
                         for x_val, y_val in loader["val"]:
+                            b_size = y_val.shape[0]
                             val_total += y_val.shape[0]
                             x_val = x_val.to(self.device) if isinstance(x_val, torch.Tensor) else [i_val.to(self.device) for i_val in x_val]
                             y_val = y_val.to(self.device)
 
+                            pbar.set_description(
+                                "\033[36m" + "Validating" + "\033[0m" + " - Epochs: {:03d}/{:03d}".format(epoch+1, epochs)
+                            )
+                            pbar.update(b_size)
+
                             val_output = self.model_v(x_val)
                             val_loss = self.criterion_v(val_output, y_val)
                             _, val_pred = torch.max(val_output, 1)
-                            val_correct += (val_pred == y_val).sum().float().cpu().item()
+                            val_correct += (val_pred == y_val).sum().float().item()
 
-                            self.experiment.log_metric("loss", val_loss.cpu().item(), step=epoch)
-                            self.experiment.log_metric("accuracy", float(val_correct / val_total), step=epoch)
-            with self.experiment.test():
-                running_loss = 0.0
-                running_corrects = 0.0
-                with torch.no_grad():
-                    for x, y in loader["test"]:
-                        x = x.to(self.device) if isinstance(x, torch.Tensor) else [i_val.to(self.device) for i_val in x]
-                        y = y.to(self.device)
-                        # x=y[0]
-                        # y=y[1]
-                        # #x = x.to(self.device) if isinstance(x, torch.Tensor) else [i.to(self.device) for i in x]
-                        # y = y.to(self.device)
+                            # self.experiment.log_metric("loss", val_loss.item(), step=epoch)
+                            # self.experiment.log_metric("accuracy", float(val_correct / val_total), step=epoch)
 
-                        pbar.set_description("\033[32m"+"Evaluating"+"\033[0m")
-                        pbar.update(b_size)
+            if test:
+                len_of_test_dataset = len(loader["test"].dataset)
+                with self.experiment.test():
+                    running_loss = 0.0
+                    running_corrects = 0.0
+                    with torch.no_grad():
+                        test_correct = 0.0
+                        test_total = 0.0
+                        self.model_v.eval()
+                        pbar = tqdm.tqdm(total=len_of_test_dataset)
+                        for x_test, y_test in loader["test"]:
+                            b_size = y_test.shape[0]
+                            test_total += y_test.shape[0]
+                            x_test = x_test.to(self.device) if isinstance(x_test, torch.Tensor) else [i_val.to(self.device) for i_val in x_test]
+                            y_test = y_test.to(self.device)
+                            # x=y[0]
+                            # y=y[1]
+                            # #x = x.to(self.device) if isinstance(x, torch.Tensor) else [i.to(self.device) for i in x]
+                            # y = y.to(self.device)
 
-                        outputs = self.model_v(x)
-                        loss = self.criterion_v(outputs, y)
-                        _, predicted = torch.max(outputs, 1)
-                        correct += (predicted == y).sum().float().cpu().item()
+                            pbar.set_description(
+                                "\033[36m" + "Testing" + "\033[0m" + " - Epochs: {:03d}/{:03d}".format(epoch+1, epochs)
+                            )
+                            pbar.update(b_size)
 
-                        running_loss += loss.cpu().item()
-                        running_corrects += torch.sum(predicted == y).float().cpu().item()
 
-                        self.experiment.log_metric("loss", running_loss, step=epoch)
-                        self.experiment.log_metric("accuracy", float(running_corrects / val_total))
-                    pbar.close()
-                    acc = self.experiment.get_metric("accuracy")
+                            test_outputs = self.model_v(x_test)
+                            test_loss = self.criterion_v(test_outputs, y_test)
+                            _, test_predicted = torch.max(test_outputs, 1)
+                            test_correct += (test_predicted == y_test).sum().float().item()
+
+                            running_loss += test_loss.item()
+                            running_corrects += torch.sum(test_predicted == y_test).float().item()
+
+                            # self.experiment.log_metric("loss", running_loss, step=epoch)
+                            # self.experiment.log_metric("accuracy", float(running_corrects / test_total))
+                            # self.experiment.log_metric("predicted_soh", test_outputs.item(), step=epoch)
+                            # self.experiment.log_metric("current_soh", x_test.item(), step=epoch)
+                        pbar.close()
+                        # acc = self.experiment.get_metric("accuracy")
 
             pbar.close()
 
-    def evaluate(self, loader: DataLoader, verbose: bool = False) -> None or float:
+    def evaluate(self,x_train, y_train, x_val, y_val, x_test, y_test, loader: Dict[str, DataLoader], epochs: int, verbose: bool = False, checkpoint_path: str = None, validation: bool = True, test: bool = True) -> None or float:
         """
         The method of evaluating your PyTorch Model.
         With the assumption, This method use for training network for classification.
@@ -274,43 +300,52 @@ class NeuralNetworkClassifier:
         """
         running_loss = 0.0
         running_corrects = 0.0
-        pbar = tqdm.tqdm(total=len(loader.dataset))
+        len_of_test_dataset = len(loader["test"].dataset)
+        pbar = tqdm.tqdm(total=len(loader["test"].dataset))
 
-
-        self.model.eval()
-        self.experiment.log_parameter("test_ds_size", len(loader.dataset))
+        self.experiment.log_parameter("test_ds_size", len(loader["test"].dataset))
         with self.experiment.test():
             with torch.no_grad():
-                correct = 0.0
-                total = 0.0
-                for x, y in enumerate(loader):
-                    b_size = len(y)
-                    total += len(y)
-                    x=y[0]
-                    y=y[1]
-                    #x = x.to(self.device) if isinstance(x, torch.Tensor) else [i.to(self.device) for i in x]
-                    y = y.to(self.device)
-                    
-                    pbar.set_description("\033[32m"+"Evaluating"+"\033[0m")
+                test_correct = 0.0
+                test_total = 0.0
+                self.model_v.eval()
+                pbar = tqdm.tqdm(total=len_of_test_dataset)
+                for x_test, y_test in loader["test"]:
+                    b_size = y_test.shape[0]
+                    test_total += y_test.shape[0]
+                    x_test = x_test.to(self.device) if isinstance(x_test, torch.Tensor) else [i_val.to(self.device) for i_val in x_test]
+                    y_test = y_test.to(self.device)
+                    # x=y[0]
+                    # y=y[1]
+                    # #x = x.to(self.device) if isinstance(x, torch.Tensor) else [i.to(self.device) for i in x]
+                    # y = y.to(self.device)
+
+                    pbar.set_description(
+                        "\033[36m" + "Testing" + "\033[0m" + " - Test Number: {:03d}/{:03d}".format(int(test_total+1), int(y_test.shape[0]))
+                    )
                     pbar.update(b_size)
 
-                    outputs = self.model(x)
-                    loss = self.criterion(outputs, y)
-                    _, predicted = torch.max(outputs, 1)
-                    correct += (predicted == y).sum().float().cpu().item()
 
-                    running_loss += loss.cpu().item()
-                    running_corrects += torch.sum(predicted == y).float().cpu().item()
+                    test_outputs = self.model_v(x_test)
+                    test_loss = self.criterion_v(test_outputs, y_test)
+                    _, test_predicted = torch.max(test_outputs, 1)
+                    test_correct += (test_predicted == y_test).sum().float().item()
 
-                    self.experiment.log_metric("loss", running_loss)
-                    self.experiment.log_metric("accuracy", float(running_corrects / total))
+                    running_loss += test_loss.item()
+                    running_corrects += torch.sum(test_predicted == y_test).float().item()
+
+                    # self.experiment.log_metric("loss", running_loss, step=epoch)
+                    self.experiment.log_metric("accuracy", float(running_corrects / test_total))
+                    self.experiment.log_metric("predicted_soh", test_outputs.item())
+                    self.experiment.log_metric("current_soh", y_test.item())
+
                 pbar.close()
-            #acc = self.experiment.get_metric("accuracy")
+                acc = self.experiment.get_metric("accuracy")
 
-        print("\033[33m" + "Evaluation finished. " + "\033[0m" + "Loss: {:.4f}".format(loss))
+        print("\033[33m" + "Evaluation finished. " + "\033[0m" + "Loss: {:.4f}".format(test_loss))
 
         if verbose:
-            return loss
+            return running_corrects
 
     def save_checkpoint(self) -> dict:
         """
@@ -336,13 +371,13 @@ class NeuralNetworkClassifier:
 
         checkpoints = {
             "epoch": deepcopy(self.hyper_params["epochs"]),
-            "optimizer_state_dict": deepcopy(self.optimizer.state_dict())
+            "optimizer_state_dict": deepcopy(self.optimizer_t.state_dict())
         }
 
         if self._is_parallel:
-            checkpoints["model_state_dict"] = deepcopy(self.model.module.state_dict())
+            checkpoints["model_state_dict"] = deepcopy(self.model_t.module.state_dict())
         else:
-            checkpoints["model_state_dict"] = deepcopy(self.model.state_dict())
+            checkpoints["model_state_dict"] = deepcopy(self.model_t.state_dict())
 
         return checkpoints
 
@@ -482,7 +517,7 @@ class NeuralNetworkClassifier:
                 outputs = self.model(x)
                 _, predicted = torch.max(outputs, 1)
 
-                predicts.append(predicted.cpu().numpy())
+                predicts.append(predicted.numpy())
                 targets.append(y.numpy())
             pbar.close()
 
