@@ -280,7 +280,7 @@ class NeuralNetworkClassifier:
 
             pbar.close()
 
-    def evaluate(self, loader: DataLoader, verbose: bool = False) -> None or float:
+    def evaluate(self, loader: Dict[str, DataLoader], verbose: bool = False) -> None or float:
         """
         The method of evaluating your PyTorch Model.
         With the assumption, This method use for training network for classification.
@@ -300,21 +300,22 @@ class NeuralNetworkClassifier:
         """
         running_loss = 0.0
         running_corrects = 0.0
-        pbar = tqdm.tqdm(total=len(loader.dataset))
+        len_of_test_dataset = len(loader["test"].dataset)
+        pbar = tqdm.tqdm(total=len_of_test_dataset)
 
 
         self.model_v.eval()
-        self.experiment.log_parameter("test_ds_size", len(loader.dataset))
+        self.experiment.log_parameter("test_ds_size", len(loader["test"].dataset))
         with self.experiment.test():
             with torch.no_grad():
                 correct = 0.0
                 total = 0.0
-                for x, y in enumerate(loader):
+                for x, y in loader["test"]:
                     b_size = len(y)
                     total += len(y)
-                    x=y[0]
-                    y=y[1]
-                    #x = x.to(self.device) if isinstance(x, torch.Tensor) else [i.to(self.device) for i in x]
+                    # x=y[0]
+                    # y=y[1]
+                    x = x.to(self.device) if isinstance(x, torch.Tensor) else [i.to(self.device) for i in x]
                     y = y.to(self.device)
 
                     pbar.set_description("\033[32m"+"Evaluating"+"\033[0m")
@@ -430,6 +431,26 @@ class NeuralNetworkClassifier:
 
         self.optimizer_v.load_state_dict(checkpoints["optimizer_state_dict"])
 
+    def restore_checkpoint_embeddings(self, checkpoints: dict) -> None:
+        """
+        The method of loading trained PyTorch model.
+
+        :param checkpoints: dictionary which contains {'epoch', 'optimizer_state_dict', 'model_state_dict'}
+        :return: None
+        """
+        self._start_epoch = checkpoints["epoch"]
+        if not isinstance(self._start_epoch, int):
+            raise TypeError
+
+        if self._is_parallel:
+            self.model_t.module.load_state_dict(checkpoints["model_state_dict"])
+        else:
+            self.model_t.load_state_dict(checkpoints["model_state_dict"])
+
+        self.optimizer_t.load_state_dict(checkpoints["optimizer_state_dict"])
+
+
+
     def restore_from_file(self, path: str, map_location: str = "cpu") -> None:
         """
         The method of loading trained PyTorch model from file.
@@ -448,6 +469,25 @@ class NeuralNetworkClassifier:
         """
         checkpoints = torch.load(path, map_location=map_location)
         self.restore_checkpoint(checkpoints)
+
+    def restore_from_file_embeddings(self, path: str, map_location: str = "cpu") -> None:
+            """
+            The method of loading trained PyTorch model from file.
+
+            ::
+
+                clf = NeuralNetworkClassifier(
+                        Network(), nn.CrossEntropyLoss(),
+                        optim.Adam, optimizer_config, experiment
+                    )
+                clf.restore_from_file('path/to/trained/weights.pth')
+
+            :param path: path to saved directory. : str
+            :param map_location: default cpu: str
+            :return: None
+            """
+            checkpoints = torch.load(path, map_location=map_location)
+            self.restore_checkpoint_embeddings(checkpoints)
 
     @property
     def experiment_tag(self) -> list:
