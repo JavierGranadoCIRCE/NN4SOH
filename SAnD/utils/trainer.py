@@ -280,7 +280,7 @@ class NeuralNetworkClassifier:
 
             pbar.close()
 
-    def evaluate(self,x_train, y_train, x_val, y_val, x_test, y_test, loader: Dict[str, DataLoader], epochs: int, verbose: bool = False, checkpoint_path: str = None, validation: bool = True, test: bool = True) -> None or float:
+    def evaluate(self, loader: DataLoader, verbose: bool = False) -> None or float:
         """
         The method of evaluating your PyTorch Model.
         With the assumption, This method use for training network for classification.
@@ -300,52 +300,43 @@ class NeuralNetworkClassifier:
         """
         running_loss = 0.0
         running_corrects = 0.0
-        len_of_test_dataset = len(loader["test"].dataset)
-        pbar = tqdm.tqdm(total=len(loader["test"].dataset))
+        pbar = tqdm.tqdm(total=len(loader.dataset))
 
-        self.experiment.log_parameter("test_ds_size", len(loader["test"].dataset))
+
+        self.model_v.eval()
+        self.experiment.log_parameter("test_ds_size", len(loader.dataset))
         with self.experiment.test():
             with torch.no_grad():
-                test_correct = 0.0
-                test_total = 0.0
-                self.model_v.eval()
-                pbar = tqdm.tqdm(total=len_of_test_dataset)
-                for x_test, y_test in loader["test"]:
-                    b_size = y_test.shape[0]
-                    test_total += y_test.shape[0]
-                    x_test = x_test.to(self.device) if isinstance(x_test, torch.Tensor) else [i_val.to(self.device) for i_val in x_test]
-                    y_test = y_test.to(self.device)
-                    # x=y[0]
-                    # y=y[1]
-                    # #x = x.to(self.device) if isinstance(x, torch.Tensor) else [i.to(self.device) for i in x]
-                    # y = y.to(self.device)
+                correct = 0.0
+                total = 0.0
+                for x, y in enumerate(loader):
+                    b_size = len(y)
+                    total += len(y)
+                    x=y[0]
+                    y=y[1]
+                    #x = x.to(self.device) if isinstance(x, torch.Tensor) else [i.to(self.device) for i in x]
+                    y = y.to(self.device)
 
-                    pbar.set_description(
-                        "\033[36m" + "Testing" + "\033[0m" + " - Test Number: {:03d}/{:03d}".format(int(test_total+1), int(y_test.shape[0]))
-                    )
+                    pbar.set_description("\033[32m"+"Evaluating"+"\033[0m")
                     pbar.update(b_size)
 
+                    outputs = self.model_v(x)
+                    loss = self.criterion_v(outputs, y)
+                    _, predicted = torch.max(outputs, 1)
+                    correct += (predicted == y).sum().float().cpu().item()
 
-                    test_outputs = self.model_v(x_test)
-                    test_loss = self.criterion_v(test_outputs, y_test)
-                    _, test_predicted = torch.max(test_outputs, 1)
-                    test_correct += (test_predicted == y_test).sum().float().item()
+                    running_loss += loss.cpu().item()
+                    running_corrects += torch.sum(predicted == y).float().cpu().item()
 
-                    running_loss += test_loss.item()
-                    running_corrects += torch.sum(test_predicted == y_test).float().item()
-
-                    # self.experiment.log_metric("loss", running_loss, step=epoch)
-                    self.experiment.log_metric("accuracy", float(running_corrects / test_total))
-                    self.experiment.log_metric("predicted_soh", test_outputs.item())
-                    self.experiment.log_metric("current_soh", y_test.item())
-
+                    self.experiment.log_metric("loss", running_loss)
+                    self.experiment.log_metric("accuracy", float(running_corrects / total))
                 pbar.close()
-                acc = self.experiment.get_metric("accuracy")
+            #acc = self.experiment.get_metric("accuracy")
 
-        print("\033[33m" + "Evaluation finished. " + "\033[0m" + "Loss: {:.4f}".format(test_loss))
+        print("\033[33m" + "Evaluation finished. " + "\033[0m" + "Loss: {:.4f}".format(loss))
 
         if verbose:
-            return running_corrects
+            return loss
 
     def save_checkpoint(self) -> dict:
         """
@@ -433,11 +424,11 @@ class NeuralNetworkClassifier:
             raise TypeError
 
         if self._is_parallel:
-            self.model.module.load_state_dict(checkpoints["model_state_dict"])
+            self.model_v.module.load_state_dict(checkpoints["model_state_dict"])
         else:
-            self.model.load_state_dict(checkpoints["model_state_dict"])
+            self.model_v.load_state_dict(checkpoints["model_state_dict"])
 
-        self.optimizer.load_state_dict(checkpoints["optimizer_state_dict"])
+        self.optimizer_v.load_state_dict(checkpoints["optimizer_state_dict"])
 
     def restore_from_file(self, path: str, map_location: str = "cpu") -> None:
         """

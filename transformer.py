@@ -117,19 +117,19 @@ labels=torch.from_numpy(np.array(labels)).type(torch.FloatTensor)
 # data, labels = data_set[0], data_set[1]
 
 
-x_train = data[:7023]
-x_val = data[7023: 7093]
-x_test = data[7093:]
-y_train = labels[:7023] ##7023
-y_val = labels[7023: 7093]#7023: 7093
-y_test = labels[7093:]#7093
+# x_train = data[:7023]
+# x_val = data[7023: 7093]
+# x_test = data[7093:]
+# y_train = labels[:7023] ##7023
+# y_val = labels[7023: 7093]#7023: 7093
+# y_test = labels[7093:]#7093
 
-# x_train = data[:400]
-# x_val = data[400: 450]
-# x_test = data[450:]
-# y_train = labels[:400]
-# y_val = labels[400: 450]
-# y_test = labels[450:]
+x_train = data[:400]
+x_val = data[400: 450]
+x_test = data[450:]
+y_train = labels[:400]
+y_val = labels[400: 450]
+y_test = labels[450:]
 
 train_ds = TensorDataset(x_train, y_train)
 val_ds = TensorDataset(x_val, y_val)
@@ -238,21 +238,16 @@ clf = NeuralNetworkClassifier(
 # )
 
 # training network
-clf.fit(x_train, y_train, x_val, y_val, x_test, y_test,
-        {"train": train_loader,
-     "val": val_loader,
-     "test": test_loader},
-      epochs=80
-      # epochs=1
-)
+# clf.fit(x_train, y_train, x_val, y_val, x_test, y_test,
+#         {"train": train_loader,
+#      "val": val_loader,
+#      "test": test_loader},
+#       epochs=80
+#       # epochs=1
+# )
 
-clf.evaluate(x_train, y_train, x_val, y_val, x_test, y_test,
-        {"train": train_loader,
-         "val": val_loader,
-         "test": test_loader},
-        # epochs=80
-          epochs=8
-        )
+clf.restore_from_file("save_params/trained model.pth", "cpu")
+clf.evaluate(test_loader)
 
 # evaluating
 # clf.evaluate(test_loader)
