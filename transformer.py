@@ -226,15 +226,16 @@ clf = NeuralNetworkClassifier(
 # )
 
 # training network
-clf.fit(x_train, y_train, x_val, y_val, x_test, y_test,
-        {"train": train_loader,
-     "val": val_loader,
-     "test": test_loader},
-     epochs=80
-)
+# clf.fit(x_train, y_train, x_val, y_val, x_test, y_test,
+#         {"train": train_loader,
+#      "val": val_loader,
+#      "test": test_loader},
+#      epochs=80
+# )
 
 # evaluating
-# clf.evaluate(test_loader)
+clf.restore_from_file("save_params/trained model.pth", "cuda")
+clf.evaluate(test_loader)
 
 # save
 clf.save_to_file("save_params/")
