@@ -226,25 +226,25 @@ clf = NeuralNetworkClassifier(
 # )
 
 # training network
-# clf.fit(x_train, y_train, x_val, y_val, x_test, y_test,
-#         {"train": train_loader,
-#      "val": val_loader,
-#      "test": test_loader},
-#      epochs=80
-# )
+clf.fit(x_train, y_train, x_val, y_val, x_test, y_test,
+         {"train": train_loader,
+      "val": val_loader,
+      "test": test_loader},
+      epochs=80
+ )
 
 # evaluating
-clf.restore_from_file("save_params/trained model.pth", "cuda")
-clf.evaluate(test_loader)
+#clf.restore_from_file("save_params/trained model.pth", "cuda")
+#clf.evaluate(test_loader)
 
 # save
 clf.save_to_file("save_params/")
 
 #Conversión a TorchScript para ejecutar el modelo en Raspberry o ARM sin depender de PyTorch en tiempo real
 # Cargar el modelo
-model = SAnD(in_feature, seq_len, n_heads, factor, num_class, num_layers)  # Define tu modelo
-model.load_state_dict(torch.load("save_params/trained model.pth"), strict=False)
-model.eval()
+#model = SAnD(in_feature, seq_len, n_heads, factor, num_class, num_layers)  # Define tu modelo
+#model.load_state_dict(torch.load("save_params/trained model.pth"), strict=False)
+#model.eval()
 
 # Convertir a TorchScript
 #scripted_model = torch.jit.script(model)
