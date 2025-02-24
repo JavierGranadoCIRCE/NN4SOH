@@ -18,6 +18,7 @@ import scipy.io as scio
 import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.preprocessing import MinMaxScaler
+from SAnD.utils.inference import Inference_SoH
 import scipy.io as scio
 import glob
 import os
@@ -226,12 +227,20 @@ clf = NeuralNetworkClassifier(
 # )
 
 # training network
-clf.fit(x_train, y_train, x_val, y_val, x_test, y_test,
-         {"train": train_loader,
-      "val": val_loader,
-      "test": test_loader},
-      epochs=80
- )
+# clf.fit(x_train, y_train, x_val, y_val, x_test, y_test,
+#          {"train": train_loader,
+#       "val": val_loader,
+#       "test": test_loader},
+#       epochs=80
+#  )
+
+
+#Inference SoH ###############################
+inference_model = Inference_SoH("save_params/trained_model_siames.pth", input_features=3, seq_len=400, n_heads=32, factor=32, n_class=1, n_layers=4)
+soh_predictions = inference_model.predict(test_loader)
+#Inference SoH ###############################
+
+
 
 # evaluating
 #clf.restore_from_file("save_params/trained model.pth", "cuda")
