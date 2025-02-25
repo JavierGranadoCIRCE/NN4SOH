@@ -190,12 +190,14 @@ num_layers = 4
 
 clf = NeuralNetworkClassifier(
     SiameseSAnD(SAnD_Embedding(in_feature, seq_len, n_heads, factor, num_class, num_layers)),
+    SAnD(in_feature, seq_len, n_heads, factor, num_class, num_layers),
     ContrastiveLoss(),
+    nn.MSELoss(),
     optim.Adam, optimizer_config={"lr": 1e-4, "betas": (0.9, 0.98), "eps": 4e-09, "weight_decay": 5e-4},
     #experiment=Experiment("8mKGHiYeg2P7dZEFlvQv3PEzc")
     experiment = Experiment(api_key="Td3ICbNoK8hW14nwxZfp10SGN",
-                        project_name="nn4soh",
-                        workspace="javiergranadocirce")
+                            project_name="nn4soh",
+                            workspace="javiergranadocirce")
 
 
 )
@@ -227,17 +229,26 @@ clf = NeuralNetworkClassifier(
 # )
 
 # training network
-# clf.fit(x_train, y_train, x_val, y_val, x_test, y_test,
-#          {"train": train_loader,
-#       "val": val_loader,
-#       "test": test_loader},
-#       epochs=80
-#  )
+clf.fit_normal(x_train, y_train, x_val, y_val, x_test, y_test,
+         {"train": train_loader,
+      "val": val_loader,
+      "test": test_loader},
+      epochs=1
+ )
+
+# training network
+# clf.fit_siamese(x_train, y_train, x_val, y_val, x_test, y_test,
+#             {"train": train_loader,
+#         "val": val_loader,
+#         "test": test_loader},
+#         epochs=80
+# )
+
 
 
 #Inference SoH ###############################
-inference_model = Inference_SoH("save_params/trained_model_siames.pth", input_features=3, seq_len=400, n_heads=32, factor=32, n_class=1, n_layers=4)
-soh_predictions = inference_model.predict(test_loader)
+# inference_model = Inference_SoH("save_params/trained_model_siames.pth", input_features=3, seq_len=400, n_heads=32, factor=32, n_class=1, n_layers=4)
+# soh_predictions = inference_model.predict(test_loader)
 #Inference SoH ###############################
 
 
@@ -247,7 +258,8 @@ soh_predictions = inference_model.predict(test_loader)
 #clf.evaluate(test_loader)
 
 # save
-clf.save_to_file("save_params/")
+clf.save_to_file_normal("save_params/")
+#clf.save_to_file_siamese("save_params/")
 
 #Conversión a TorchScript para ejecutar el modelo en Raspberry o ARM sin depender de PyTorch en tiempo real
 # Cargar el modelo
