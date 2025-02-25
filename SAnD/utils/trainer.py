@@ -355,7 +355,7 @@ class NeuralNetworkClassifier:
 
                     # Registrar métricas en Comet o donde sea necesario
                     #self.experiment.log_metric("loss", avg_loss.item(), step=epoch)
-                    self.experiment.log_metric("loss", float(avg_loss), step=epoch)
+                    #self.experiment.log_metric("loss", float(avg_loss), step=epoch)
                     # self.experiment.log_metric("avg_loss", avg_loss, step=epoch)
 
                     # Registrar distancia media entre pares (métrica clave en aprendizaje siamés)

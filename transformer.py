@@ -18,7 +18,7 @@ import scipy.io as scio
 import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.preprocessing import MinMaxScaler
-from SAnD.utils.inference import Inference_SoH
+from SAnD.utils.inference import Inference_SoH_Siamese, Inference_SoH_Normal
 import scipy.io as scio
 import glob
 import os
@@ -202,41 +202,16 @@ clf = NeuralNetworkClassifier(
 
 )
 
-# from SAnD.core.model import SAnD
-# from SAnD.core.modules import RegressionModule
 
-
-# class RegSAnD(SAnD):
-#     def __init__(self, *args, **kwargs):
-#         super(RegSAnD, self).__init__(*args, **kwargs)
-#         d_model = kwargs.get("d_model")
-#         factor = kwargs.get("factor")
-#         output_size = kwargs.get("n_class")    # output_size
-
-#         self.clf = RegressionModule(d_model, factor, output_size)
-
-
-# # model = RegSAnD(
-# #     input_features=..., seq_len=..., n_heads=..., factor=...,
-# #     n_class=..., n_layers=...
-# # )
-
-# clf = NeuralNetworkClassifier(
-#     RegSAnD(in_feature, seq_len, n_heads, factor, num_class, num_layers),
-#     nn.CrossEntropyLoss(),
-#     optim.Adam, optimizer_config={"lr": 1e-5, "betas": (0.9, 0.98), "eps": 4e-09, "weight_decay": 5e-4},
-#     experiment=Experiment("8mKGHiYeg2P7dZEFlvQv3PEzc")
-# )
-
-# training network
+# training network Normal
 clf.fit_normal(x_train, y_train, x_val, y_val, x_test, y_test,
          {"train": train_loader,
       "val": val_loader,
       "test": test_loader},
-      epochs=1
+      epochs=80
  )
 
-# training network
+# training network Siamese
 # clf.fit_siamese(x_train, y_train, x_val, y_val, x_test, y_test,
 #             {"train": train_loader,
 #         "val": val_loader,
@@ -246,12 +221,15 @@ clf.fit_normal(x_train, y_train, x_val, y_val, x_test, y_test,
 
 
 
-#Inference SoH ###############################
-# inference_model = Inference_SoH("save_params/trained_model_siames.pth", input_features=3, seq_len=400, n_heads=32, factor=32, n_class=1, n_layers=4)
+#Inference SoH Siames ###############################
+# inference_model = Inference_SoH_Siamese("save_params/trained_model_siames.pth", input_features=3, seq_len=400, n_heads=32, factor=32, n_class=1, n_layers=4)
 # soh_predictions = inference_model.predict(test_loader)
 #Inference SoH ###############################
 
-
+#Inference SoH Normal ###############################
+# inference_model = Inference_SoH_Normal("save_params/trained_model_normal.pth", input_features=3, seq_len=400, n_heads=32, factor=32, n_class=1, n_layers=4)
+# soh_predictions = inference_model.predict(test_loader)
+#Inference SoH ###############################
 
 # evaluating
 #clf.restore_from_file("save_params/trained model.pth", "cuda")
