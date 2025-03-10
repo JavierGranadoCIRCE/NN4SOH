@@ -24,7 +24,8 @@ import glob
 import os
 import matplotlib.pyplot as plt
 import numpy as np
-
+import onnxruntime as ort
+import numpy as np
 
 from SAnD.core.modules import ContrastiveLoss
 
@@ -33,6 +34,7 @@ from SAnD.core.modules import ContrastiveLoss
 from SAnD.core.model import SAnD, SAnD_Embedding, SiameseSAnD
 from SAnD.utils.functions import generar_pares_aleatorios
 from SAnD.utils.trainer import NeuralNetworkClassifier
+
 ######################################## Commit nueva rama merge entre Dataset complet y entrenamiento Siames 18022025
 ######################################## Commit nueva rama merge entre Dataset complet y entrenamiento Siames 18022025
 
@@ -128,6 +130,14 @@ test_ds = TensorDataset(x_test, y_test)
 train_loader = DataLoader(train_ds, batch_size=1)
 val_loader = DataLoader(val_ds, batch_size=1)
 test_loader = DataLoader(test_ds, batch_size=1)
+
+
+# plt.hist(y_train, bins=20, edgecolor='black', alpha=0.7)
+# plt.xlabel("SoH")
+# plt.ylabel("Frecuencia")
+# plt.title("Distribución de SoH en el dataset de entrenamiento")
+# plt.show()
+
 #x1_cont, x2_cont, y_cont = generar_pares_aleatorios(x_train, y_train, umbral_soh=0.02)
 
 # ##########################################################################
@@ -204,12 +214,12 @@ clf = NeuralNetworkClassifier(
 
 
 # training network Normal
-clf.fit_normal(x_train, y_train, x_val, y_val, x_test, y_test,
-         {"train": train_loader,
-      "val": val_loader,
-      "test": test_loader},
-      epochs=80
- )
+# clf.fit_normal(x_train, y_train, x_val, y_val, x_test, y_test,
+#          {"train": train_loader,
+#       "val": val_loader,
+#       "test": test_loader},
+#       epochs=80
+#  )
 
 # training network Siamese
 # clf.fit_siamese(x_train, y_train, x_val, y_val, x_test, y_test,
@@ -222,8 +232,8 @@ clf.fit_normal(x_train, y_train, x_val, y_val, x_test, y_test,
 
 
 #Inference SoH Siames ###############################
-# inference_model = Inference_SoH_Siamese("save_params/trained_model_siames.pth", input_features=3, seq_len=400, n_heads=32, factor=32, n_class=1, n_layers=4)
-# soh_predictions = inference_model.predict(test_loader)
+#inference_model = Inference_SoH_Siamese("save_params/trained_model_siamese.pth", input_features=3, seq_len=400, n_heads=32, factor=32, n_class=1, n_layers=4)
+#soh_predictions = inference_model.predict(test_loader)
 #Inference SoH ###############################
 
 #Inference SoH Normal ###############################
@@ -232,21 +242,89 @@ clf.fit_normal(x_train, y_train, x_val, y_val, x_test, y_test,
 #Inference SoH ###############################
 
 # evaluating
-#clf.restore_from_file("save_params/trained model.pth", "cuda")
-#clf.evaluate(test_loader)
+# clf.restore_from_file("save_params/trained model.pth", "cuda")
+# clf.evaluate(test_loader)
 
 # save
-clf.save_to_file_normal("save_params/")
-#clf.save_to_file_siamese("save_params/")
+#clf.save_to_file_normal("save_params/")
+# clf.save_to_file_siamese("save_params/")
 
-#Conversión a TorchScript para ejecutar el modelo en Raspberry o ARM sin depender de PyTorch en tiempo real
-# Cargar el modelo
-#model = SAnD(in_feature, seq_len, n_heads, factor, num_class, num_layers)  # Define tu modelo
-#model.load_state_dict(torch.load("save_params/trained model.pth"), strict=False)
-#model.eval()
 
-# Convertir a TorchScript
-#scripted_model = torch.jit.script(model)
 
-# Guardar el modelo convertido
-#scripted_model.save("save_params/modelo_torchscript.pt")
+
+# # Conversión a ONNX
+# # Cargar el modelo entrenado
+# modelo = SAnD(in_feature, seq_len, n_heads, factor, num_class, num_layers)
+# modelo_siamese = SiameseSAnD(SAnD_Embedding(in_feature, seq_len, n_heads, factor, num_class, num_layers))
+# # Verificar los atributos de modelo_siamese
+# # print(modelo_siamese)
+# # # Verificar los atributos de modelo_normal
+# # print(modelo_normal)
+# # # Copiar pesos de la parte compartida del modelo siamesa al modelo normal
+# # Transferir pesos del modelo siamesa al modelo normal
+# modelo.encoder.load_state_dict(modelo_siamese.sand.encoder.state_dict())  # Transferir encoder
+# modelo.dense_interpolation.load_state_dict(modelo_siamese.sand.dense_interpolation.state_dict())  # Transferir dense_interpolation
+#
+#
+# print("Pesos transferidos correctamente.")
+# print(modelo)
+#
+# # 2. Cargar el diccionario de estado correctamente
+# checkpoint = torch.load("save_params/trained_model_normal.pth", map_location="cpu")
+# # checkpoint = torch.load("save_params/trained_model_siamese.pth", map_location="cpu")
+# modelo.load_state_dict(checkpoint["model_state_dict"])  # Extrae solo "model_state_dict"
+# modelo.eval()
+#
+# # Crear un dummy input (ajusta el tamaño según tu entrada real)
+#
+# input_shape = (400, 3)
+# dummy_input = torch.randn(1, *input_shape)
+#
+# # Exportar a ONNX
+# # torch.onnx.export(modelo, dummy_input, "save_params/trained_model_normal.onnx", opset_version=13)
+# torch.onnx.export(modelo, dummy_input, "save_params/trained_model_siamese.onnx", opset_version=13)
+
+#
+#
+# #Inferencia en PC
+# Cargar el modelo ONNX
+session = ort.InferenceSession("save_params/trained_model_normal.onnx")
+# session = ort.InferenceSession("save_params/trained_model_siamese.onnx")
+
+# Obtener nombres de las entradas del modelo
+input_name = session.get_inputs()[0].name
+print(f"Nombre de la entrada: {input_name}")
+
+# # Crear un dummy input (ajustar si es necesario)
+# dummy_input = np.random.randn(1, 400, 3).astype(np.float32)
+#
+# # Realizar la inferencia
+# outputs = session.run(None, {input_name: dummy_input})
+
+# Inicializar listas para almacenar predicciones y etiquetas reales
+predicciones = []
+etiquetas_reales = []
+
+# Recorrer todos los ejemplos de test
+for idx in range(len(x_test)):
+    # Seleccionar un ejemplo de test (por ejemplo, el primero)
+    # idx = 0  # Puedes cambiarlo para probar otros ejemplos
+    x_sample = x_test[idx].numpy().astype(np.float32)  # Convertir de tensor a numpy
+    x_sample = np.expand_dims(x_sample, axis=0)  # Añadir batch dimension
+
+    # Realizar la inferencia
+    outputs = session.run(None, {input_name: x_sample})
+    # Guardar la predicción y la etiqueta real
+    predicciones.append(outputs)
+    etiquetas_reales.append(y_test[idx].item())
+
+    # Mostrar resultado parcial
+    print(f"Ejemplo {idx + 1}/{len(x_test)} -> Predicción: {outputs}, Etiqueta Real: {y_test[idx].item()}")
+
+
+# # # Obtener la etiqueta real
+# # y_real = y_test[idx].item()  # Convertir a valor escalar si es necesario
+# #
+# # # Mostrar la salida
+# # print("Resultado de la inferencia:", outputs)
+# # print(f"Etiqueta real: {y_real}")

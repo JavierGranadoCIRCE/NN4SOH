@@ -147,14 +147,13 @@ class RegressionModule(nn.Module):
         return x
 
 class ContrastiveLoss(nn.Module):
+    """
+    Pérdida contrastiva con margen ajustable
+    """
     def __init__(self, margin=1.0):
         super(ContrastiveLoss, self).__init__()
         self.margin = margin
 
-    def forward(self, emb1, emb2, label):
-        # Distancia euclidiana entre los embeddings
-        distance = torch.nn.functional.pairwise_distance(emb1, emb2)
-
-        # Loss: Minimiza distancia para pares similares, maximiza para diferentes
-        loss = (1 - label) * torch.pow(distance, 2) + label * torch.pow(torch.clamp(self.margin - distance, min=0.0), 2)
+    def forward(self, similarity, label):
+        loss = (label * (1 - similarity)**2) + ((1 - label) * torch.clamp(similarity - self.margin, min=0)**2)
         return loss.mean()

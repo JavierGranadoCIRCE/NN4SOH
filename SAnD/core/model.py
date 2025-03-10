@@ -1,6 +1,9 @@
 import torch
 import torch.nn as nn
 from ..core import modules
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
 
 
 class EncoderLayerForSAnD(nn.Module):
@@ -57,30 +60,40 @@ class SAnD(nn.Module):
 
 class SAnD_Embedding(nn.Module):
     """
-    Explicar aquí la mejora que se ha hecho del entrenamoiento siames con perdida contrastiva
+    Versión mejorada del modelo siames con embeddings optimizados
     """
-    def __init__(
-            self, input_features: int, seq_len: int, n_heads: int, factor: int,
-            n_class: int, n_layers: int, d_model: int = 128, dropout_rate: float = 0.2
-    ) -> None:
+    def __init__(self, input_features: int, seq_len: int, n_heads: int, factor: int,
+                 n_class: int, n_layers: int, d_model: int = 128, dropout_rate: float = 0.2) -> None:
         super(SAnD_Embedding, self).__init__()
         self.encoder = EncoderLayerForSAnD(input_features, seq_len, n_heads, n_layers, d_model, dropout_rate)
         self.dense_interpolation = modules.DenseInterpolation(seq_len, factor)
-        self.embedding_layer = nn.Linear(d_model * factor, 128)  # Capa de embeddings
+
+        # Embedding mejorado con una capa oculta adicional
+        self.embedding_layer = nn.Sequential(
+            nn.Linear(d_model * factor, 256),  # Aumentamos dimensionalidad
+            nn.ReLU(),
+            nn.Dropout(0.2),
+            nn.LayerNorm(256),
+            nn.Linear(256, 128)  # Reducimos de nuevo a 128
+        )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = self.encoder(x)
         x = self.dense_interpolation(x)
         x = x.reshape(x.size(0), -1)
-        x = self.embedding_layer(x)  # Proyectamos a 128 dimensiones
-        return x  # Embedding final
+        x = self.embedding_layer(x)  # Embedding final mejorado
+        return x
 
 class SiameseSAnD(nn.Module):
+    """
+    Modelo siamesa con comparación basada en similitud coseno
+    """
     def __init__(self, sand_model: SAnD_Embedding):
         super(SiameseSAnD, self).__init__()
-        self.sand = sand_model  # Usamos la misma red en ambas ramas
+        self.sand = sand_model
 
     def forward(self, x1: torch.Tensor, x2: torch.Tensor) -> torch.Tensor:
-        emb1 = self.sand(x1)  # Paso por SAnD
-        emb2 = self.sand(x2)  # Paso por SAnD
-        return emb1, emb2  # Devolvemos los embedding
+        emb1 = self.sand(x1)
+        emb2 = self.sand(x2)
+        similarity = F.cosine_similarity(emb1, emb2)  # Similitud coseno en vez de distancia euclidiana
+        return similarity

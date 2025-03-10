@@ -186,11 +186,11 @@ class NeuralNetworkClassifier:
                     pbar.update(b_size)
 
                     # Forward pass (obtenemos los embeddings)
-                    emb1, emb2 = self.model_s(x1_cont, x2_cont)
+                    similarity = self.model_s(x1_cont, x2_cont)
 
                     #outputs = self.model(x)
                     # Calcular pérdida contrastiva
-                    loss = self.criterion_s(emb1, emb2, y_cont)
+                    loss = self.criterion_s(similarity, y_cont)
                     self.optimizer_s.zero_grad()
                     loss.backward()
                     self.optimizer_s.step()
@@ -204,8 +204,8 @@ class NeuralNetworkClassifier:
                     self.experiment.log_metric("avg_loss", avg_loss, step=epoch)
 
                     # Registrar distancia media entre pares (métrica clave en aprendizaje siamés)
-                    avg_distance = torch.nn.functional.pairwise_distance(emb1, emb2).mean().cpu().item()
-                    self.experiment.log_metric("avg_embedding_distance", avg_distance, step=epoch)
+                    # avg_distance = torch.nn.functional.pairwise_distance(emb1, emb2).mean().cpu().item()
+                    # self.experiment.log_metric("avg_embedding_distance", avg_distance, step=epoch)
             if validation:
                 with self.experiment.validate():
                     with torch.no_grad():
@@ -221,22 +221,22 @@ class NeuralNetworkClassifier:
                             #y_val = y_val.to(self.device)
 
                             # Forward pass (obtenemos los embeddings)
-                            emb1_val, emb2_val = self.model_s(x1_cont_val, x2_cont_val)
+                            similarity_val = self.model_s(x1_cont_val, x2_cont_val)
                             # Calcular pérdida contrastiva
-                            val_loss = self.criterion_s(emb1_val, emb2_val, y_cont_val)
+                            val_loss = self.criterion_s(similarity_val, y_cont_val)
                             #val_output = self.model(x_val)
                             #val_loss = self.criterion(val_output, y_val)
                             # Calcular distancia entre embeddings
-                            distance = torch.nn.functional.pairwise_distance(emb1_val, emb2_val).mean().cpu().item()
-                            avg_distance += distance
+                            # distance = torch.nn.functional.pairwise_distance(emb1_val, emb2_val).mean().cpu().item()
+                            # avg_distance += distance
 
                             # Acumular pérdida
                             total_loss += val_loss.cpu().item()
 
                             # Registrar métricas en Comet o donde sea necesario
                             self.experiment.log_metric("val_loss", val_loss.cpu().item(), step=epoch)
-                            self.experiment.log_metric("avg_val_loss", total_loss / total_samples, step=epoch)
-                            self.experiment.log_metric("avg_val_embedding_distance", avg_distance / total_samples, step=epoch)
+                            self.experiment.log_metric("avg_val_loss", total_loss / val_total, step=epoch)
+                            # self.experiment.log_metric("avg_val_embedding_distance", avg_distance / total_samples, step=epoch)
             with self.experiment.test():
                 running_loss = 0.0
                 running_corrects = 0.0
@@ -256,18 +256,18 @@ class NeuralNetworkClassifier:
                         pbar.set_description("\033[32m"+"Evaluating"+"\033[0m")
                         pbar.update(b_size)
                         # Forward pass (obtenemos los embeddings)
-                        emb1_test, emb2_test = self.model_s(x1_cont_test, x2_cont_test)
+                        similarity_test = self.model_s(x1_cont_test, x2_cont_test)
                         # Calcular pérdida contrastiva
-                        test_loss = self.criterion_s(emb1_test, emb2_test, y_cont_test)
+                        test_loss = self.criterion_s(similarity_test, y_cont_test)
                         # Calcular distancia entre embeddings
-                        distance = torch.nn.functional.pairwise_distance(emb1_test, emb2_test).mean().cpu().item()
-                        avg_distance += distance
+                        # distance = torch.nn.functional.pairwise_distance(emb1_test, emb2_test).mean().cpu().item()
+                        # avg_distance += distance
 
                         # Acumular pérdida
-                        running_loss += test_loss.cpu().item()
+                        running_corrects += test_loss.cpu().item()
 
-                        self.experiment.log_metric("loss", running_loss, step=epoch)
-                        self.experiment.log_metric("accuracy", float(running_corrects / total_samples))
+                        self.experiment.log_metric("loss", running_corrects, step=epoch)
+                        self.experiment.log_metric("accuracy", float(running_corrects / test_total))
                     pbar.close()
                     #acc = self.experiment.get_metric("accuracy")
 
@@ -488,7 +488,7 @@ class NeuralNetworkClassifier:
         if verbose:
             return loss
 
-    def save_checkpoint(self) -> dict:
+    def save_checkpoint_n(self) -> dict:
         """
         The method of saving trained PyTorch model.
 
@@ -519,6 +519,40 @@ class NeuralNetworkClassifier:
             checkpoints["model_state_dict"] = deepcopy(self.model_n.module.state_dict())
         else:
             checkpoints["model_state_dict"] = deepcopy(self.model_n.state_dict())
+
+        return checkpoints
+
+    def save_checkpoint_s(self) -> dict:
+        """
+        The method of saving trained PyTorch model.
+
+        Note,  return value contains
+            - the number of last epoch as `epochs`
+            - optimizer state as `optimizer_state_dict`
+            - model state as `model_state_dict`
+
+        ::
+
+            clf = NeuralNetworkClassifier(
+                    Network(), nn.CrossEntropyLoss(),
+                    optim.Adam, optimizer_config, experiment
+                )
+
+            clf.fit(train_loader, epochs=10)
+            checkpoints = clf.save_checkpoint()
+
+        :return: dict {'epoch', 'optimizer_state_dict', 'model_state_dict'}
+        """
+
+        checkpoints = {
+            "epoch": deepcopy(self.hyper_params["epochs"]),
+            "optimizer_state_dict": deepcopy(self.optimizer_s.state_dict())
+        }
+
+        if self._is_parallel:
+            checkpoints["model_state_dict"] = deepcopy(self.model_s.module.state_dict())
+        else:
+            checkpoints["model_state_dict"] = deepcopy(self.model_s.state_dict())
 
         return checkpoints
 
@@ -555,7 +589,7 @@ class NeuralNetworkClassifier:
         file_name = "trained_model_normal.pth"
         path = path + file_name
 
-        checkpoints = self.save_checkpoint()
+        checkpoints = self.save_checkpoint_n()
 
         torch.save(checkpoints, path)
         self.experiment.log_asset(path, file_name=file_name)
@@ -596,7 +630,7 @@ class NeuralNetworkClassifier:
         file_name = "trained_model_siamese.pth"
         path = path + file_name
 
-        checkpoints = self.save_checkpoint()
+        checkpoints = self.save_checkpoint_s()
 
         torch.save(checkpoints, path)
         self.experiment.log_asset(path, file_name=file_name)
