@@ -31,7 +31,7 @@ from SAnD.core.modules import ContrastiveLoss
 
 from SAnD.core.modules import ContrastiveLoss
 
-from SAnD.core.model import SAnD, SAnD_Embedding, SiameseSAnD
+from SAnD.core.model import SAnD, SAnD_Embedding, SiameseSAnD, SAnDImprove
 from SAnD.utils.functions import generar_pares_aleatorios
 from SAnD.utils.trainer import NeuralNetworkClassifier
 
@@ -201,6 +201,7 @@ num_layers = 4
 clf = NeuralNetworkClassifier(
     SiameseSAnD(SAnD_Embedding(in_feature, seq_len, n_heads, factor, num_class, num_layers)),
     SAnD(in_feature, seq_len, n_heads, factor, num_class, num_layers),
+    SAnDImprove(in_feature, seq_len, n_heads, factor, num_class, num_layers),
     ContrastiveLoss(),
     nn.MSELoss(),
     optim.Adam, optimizer_config={"lr": 1e-4, "betas": (0.9, 0.98), "eps": 4e-09, "weight_decay": 5e-4},
@@ -214,7 +215,15 @@ clf = NeuralNetworkClassifier(
 
 
 # training network Normal
-# clf.fit_normal(x_train, y_train, x_val, y_val, x_test, y_test,
+clf.fit_normal(x_train, y_train, x_val, y_val, x_test, y_test,
+         {"train": train_loader,
+      "val": val_loader,
+      "test": test_loader},
+      epochs=80
+ )
+
+# training network Improve
+# clf.fit_improve(x_train, y_train, x_val, y_val, x_test, y_test,
 #          {"train": train_loader,
 #       "val": val_loader,
 #       "test": test_loader},

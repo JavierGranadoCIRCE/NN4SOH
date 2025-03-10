@@ -92,17 +92,20 @@ class NeuralNetworkClassifier:
 
     """
 
-    def __init__(self, model_s, model_n,  criterion_s, criterion_n, optimizer, optimizer_config: dict, experiment) -> None:
+    def __init__(self, model_s, model_n, model_ni,  criterion_s, criterion_n, criterion_ni, optimizer, optimizer_config: dict, experiment) -> None:
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         #self.device = torch.device("cpu")
         # Si es 'cuda', entonces el entrenamiento se ejecutará en la GPU
         print("Device used for training:", self.device)
         self.model_s = model_s.to(self.device)
         self.model_n = model_n.to(self.device)
+        self.model_ni = model_ni.to(self.device)
         self.optimizer_s = optimizer(self.model_s.parameters(), **optimizer_config)
         self.optimizer_n = optimizer(self.model_n.parameters(), **optimizer_config)
+        self.optimizer_ni = optimizer(self.model_ni.parameters(), **optimizer_config)
         self.criterion_s = criterion_s
         self.criterion_n = criterion_n
+        self.criterion_ni = criterion_ni
         self.experiment = experiment
 
         self.hyper_params = optimizer_config
