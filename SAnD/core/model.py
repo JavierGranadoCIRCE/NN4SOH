@@ -36,8 +36,16 @@ class EncoderLayerForSAnDImprove(nn.Module):
         for l in self.blocks:
             x = l(x)
 
-        # Aplicar la capa intermedia
-        x = self.intermediate_dense(x)
+        # Aplicar la capa intermedia correctamente
+        x = self.intermediate_dense[0](x)  # Linear(d_model, d_model * 2)
+        x = self.intermediate_dense[1](x)  # ReLU
+
+        x = x.permute(0, 2, 1)  # (batch_size, d_model * 2, seq_len)
+        x = self.intermediate_dense[2](x)  # BatchNorm1d(d_model * 2)
+        x = x.permute(0, 2, 1)  # (batch_size, seq_len, d_model * 2)
+
+        x = self.intermediate_dense[3](x)  # Dropout
+        x = self.intermediate_dense[4](x)  # Linear(d_model * 2, d_model)
 
         return x
 

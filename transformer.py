@@ -204,6 +204,7 @@ clf = NeuralNetworkClassifier(
     SAnDImprove(in_feature, seq_len, n_heads, factor, num_class, num_layers),
     ContrastiveLoss(),
     nn.MSELoss(),
+    nn.MSELoss(),
     optim.Adam, optimizer_config={"lr": 1e-4, "betas": (0.9, 0.98), "eps": 4e-09, "weight_decay": 5e-4},
     #experiment=Experiment("8mKGHiYeg2P7dZEFlvQv3PEzc")
     experiment = Experiment(api_key="Td3ICbNoK8hW14nwxZfp10SGN",
@@ -215,20 +216,20 @@ clf = NeuralNetworkClassifier(
 
 
 # training network Normal
-clf.fit_normal(x_train, y_train, x_val, y_val, x_test, y_test,
-         {"train": train_loader,
-      "val": val_loader,
-      "test": test_loader},
-      epochs=80
- )
-
-# training network Improve
-# clf.fit_improve(x_train, y_train, x_val, y_val, x_test, y_test,
+# clf.fit_normal(x_train, y_train, x_val, y_val, x_test, y_test,
 #          {"train": train_loader,
 #       "val": val_loader,
 #       "test": test_loader},
 #       epochs=80
 #  )
+
+# training network Improve
+clf.fit_normal_improve(x_train, y_train, x_val, y_val, x_test, y_test,
+         {"train": train_loader,
+      "val": val_loader,
+      "test": test_loader},
+      epochs=80
+ )
 
 # training network Siamese
 # clf.fit_siamese(x_train, y_train, x_val, y_val, x_test, y_test,
@@ -256,7 +257,8 @@ clf.fit_normal(x_train, y_train, x_val, y_val, x_test, y_test,
 
 # save
 #clf.save_to_file_normal("save_params/")
-# clf.save_to_file_siamese("save_params/")
+clf.save_to_file_normal_improve("save_params/")
+#clf.save_to_file_siamese("save_params/")
 
 
 

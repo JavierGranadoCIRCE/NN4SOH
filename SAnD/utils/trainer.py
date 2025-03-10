@@ -92,7 +92,7 @@ class NeuralNetworkClassifier:
 
     """
 
-    def __init__(self, model_s, model_n, model_ni,  criterion_s, criterion_n, criterion_ni, optimizer, optimizer_config: dict, experiment) -> None:
+    def __init__(self, model_s, model_n, model_ni, criterion_s, criterion_n, criterion_ni, optimizer, optimizer_config: dict, experiment) -> None:
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         #self.device = torch.device("cpu")
         # Si es 'cuda', entonces el entrenamiento se ejecutará en la GPU
@@ -433,6 +433,163 @@ class NeuralNetworkClassifier:
 
             pbar.close()
 
+    def fit_normal_improve(self,x_train, y_train, x_val, y_val, x_test, y_test, loader: Dict[str, DataLoader], epochs: int, checkpoint_path: str = None, validation: bool = True, test: bool = True) -> None:
+        """
+        | The method of training your PyTorch Model.
+        | With the assumption, This method use for training network for classification.
+
+        ::
+
+            train_ds = Subset(train_val_ds, train_index)
+            val_ds = Subset(train_val_ds, val_index)
+
+            train_val_loader = {
+                "train": DataLoader(train_ds, batch_size),
+                "val": DataLoader(val_ds, batch_size)
+            }
+
+            clf = NeuralNetworkClassifier(
+                    Network(), nn.CrossEntropyLoss(),
+                    optim.Adam, optimizer_config, experiment
+                )
+            clf.fit(train_val_loader, epochs=10)
+
+
+        :param loader: Dictionary which contains Data Loaders for training and validation.: dict{DataLoader, DataLoader}
+        :param epochs: The number of epochs: int
+        :param checkpoint_path: str
+        :param validation:
+        :return: None
+        """
+        len_of_train_dataset = len(loader["train"].dataset)
+        epochs = epochs + self._start_epoch
+
+        self.hyper_params["epochs"] = epochs
+        self.hyper_params["batch_size"] = loader["train"].batch_size
+        self.hyper_params["train_ds_size"] = len_of_train_dataset
+
+        if validation:
+            len_of_val_dataset = len(loader["val"].dataset)
+            self.hyper_params["val_ds_size"] = len_of_val_dataset
+
+        if test:
+            len_of_test_dataset = len(loader["test"].dataset)
+            self.hyper_params["test_ds_size"] = len_of_val_dataset
+
+        self.experiment.log_parameters(self.hyper_params)
+
+        for epoch in range(self._start_epoch, epochs):
+            if checkpoint_path is not None and epoch % 100 == 0:
+                self.save_to_file_normal_improve(checkpoint_path)
+            with self.experiment.train():
+                train_correct = 0.0
+                total_loss = 0.0
+                total_samples = 0.0
+
+                self.model_ni.train()
+                pbar = tqdm.tqdm(total=len_of_train_dataset)
+                for x_train, y_train in loader["train"]:
+                    b_size = y_train.shape[0]
+                    total_samples += y_train.shape[0]
+                    x_train = x_train.to(self.device) if isinstance(x_train, torch.Tensor) else [i_val.to(self.device) for i_val in x_train]
+                    y_train = y_train.to(self.device)
+                    pbar.set_description(
+                        "\033[36m" + "Training" + "\033[0m" + " - Epochs: {:03d}/{:03d}".format(epoch+1, epochs)
+                    )
+                    pbar.update(b_size)
+                    self.optimizer_ni.zero_grad()
+                    train_output = self.model_ni(x_train)
+                    train_loss = self.criterion_ni(train_output, y_train)
+                    train_loss.backward()
+                    self.optimizer_ni.step()
+                    _, train_pred = torch.max(train_output, 1)
+                    #val_correct += (val_pred == y_val).sum().float().item()
+                    train_correct += (train_pred.to(self.device) == y_train.to(self.device)).sum().float().item()
+
+                    self.experiment.log_metric("loss", train_loss.item(), step=epoch)
+                    self.experiment.log_metric("accuracy", float(train_correct / total_samples), step=epoch)
+
+                    # Actualizar métricas
+                    total_loss += train_loss.item()
+                    avg_loss = total_loss / total_samples
+
+                    # Registrar métricas en Comet o donde sea necesario
+                    #self.experiment.log_metric("loss", avg_loss.item(), step=epoch)
+                    #self.experiment.log_metric("loss", float(avg_loss), step=epoch)
+                    # self.experiment.log_metric("avg_loss", avg_loss, step=epoch)
+
+                    # Registrar distancia media entre pares (métrica clave en aprendizaje siamés)
+                    #avg_distance = torch.nn.functional.pairwise_distance(emb1, emb2).mean().item()
+                    # self.experiment.log_metric("avg_embedding_distance", avg_distance, step=epoch)
+            if validation:
+                len_of_val_dataset = len(loader["val"].dataset)
+                with self.experiment.validate():
+                    with torch.no_grad():
+                        val_correct = 0.0
+                        val_total = 0.0
+
+                        self.model_ni.eval()
+                        pbar = tqdm.tqdm(total=len_of_val_dataset)
+                        for x_val, y_val in loader["val"]:
+                            b_size = y_val.shape[0]
+                            val_total += y_val.shape[0]
+                            x_val = x_val.to(self.device) if isinstance(x_val, torch.Tensor) else [i_val.to(self.device) for i_val in x_val]
+                            y_val = y_val.to(self.device)
+
+                            pbar.set_description(
+                                "\033[36m" + "Validating" + "\033[0m" + " - Epochs: {:03d}/{:03d}".format(epoch+1, epochs)
+                            )
+                            pbar.update(b_size)
+
+                            val_output = self.model_ni(x_val)
+                            val_loss = self.criterion_ni(val_output, y_val)
+                            _, val_pred = torch.max(val_output, 1)
+                            val_correct += (val_pred == y_val).sum().float().item()
+
+                            # self.experiment.log_metric("loss", val_loss.item(), step=epoch)
+                            # self.experiment.log_metric("accuracy", float(val_correct / val_total), step=epoch)
+
+            if test:
+                len_of_test_dataset = len(loader["test"].dataset)
+                with self.experiment.test():
+                    running_loss = 0.0
+                    running_corrects = 0.0
+                    with torch.no_grad():
+                        test_correct = 0.0
+                        test_total = 0.0
+                        self.model_ni.eval()
+                        pbar = tqdm.tqdm(total=len_of_test_dataset)
+                        for x_test, y_test in loader["test"]:
+                            b_size = y_test.shape[0]
+                            test_total += y_test.shape[0]
+                            x_test = x_test.to(self.device) if isinstance(x_test, torch.Tensor) else [i_val.to(self.device) for i_val in x_test]
+                            y_test = y_test.to(self.device)
+                            # x=y[0]
+                            # y=y[1]
+                            # #x = x.to(self.device) if isinstance(x, torch.Tensor) else [i.to(self.device) for i in x]
+                            # y = y.to(self.device)
+
+                            pbar.set_description(
+                                "\033[36m" + "Testing" + "\033[0m" + " - Epochs: {:03d}/{:03d}".format(epoch+1, epochs)
+                            )
+                            pbar.update(b_size)
+                            test_outputs = self.model_ni(x_test)
+                            test_loss = self.criterion_ni(test_outputs, y_test)
+                            _, test_predicted = torch.max(test_outputs, 1)
+                            test_correct += (test_predicted == y_test).sum().float().item()
+
+                            running_loss += test_loss.item()
+                            running_corrects += torch.sum(test_predicted == y_test).float().item()
+
+                            self.experiment.log_metric("loss", running_loss, step=epoch)
+                            self.experiment.log_metric("accuracy", float(running_corrects / test_total))
+                            # self.experiment.log_metric("predicted_soh", test_outputs.item(), step=epoch)
+                            # self.experiment.log_metric("current_soh", x_test.item(), step=epoch)
+                        pbar.close()
+                        # acc = self.experiment.get_metric("accuracy")
+
+            pbar.close()
+
     def evaluate(self, loader: DataLoader, verbose: bool = False) -> None or float:
         """
         The method of evaluating your PyTorch Model.
@@ -491,6 +648,40 @@ class NeuralNetworkClassifier:
         if verbose:
             return loss
 
+    def save_checkpoint_n_improve(self) -> dict:
+        """
+        The method of saving trained PyTorch model.
+
+        Note,  return value contains
+            - the number of last epoch as `epochs`
+            - optimizer state as `optimizer_state_dict`
+            - model state as `model_state_dict`
+
+        ::
+
+            clf = NeuralNetworkClassifier(
+                    Network(), nn.CrossEntropyLoss(),
+                    optim.Adam, optimizer_config, experiment
+                )
+
+            clf.fit(train_loader, epochs=10)
+            checkpoints = clf.save_checkpoint()
+
+        :return: dict {'epoch', 'optimizer_state_dict', 'model_state_dict'}
+        """
+
+        checkpoints = {
+            "epoch": deepcopy(self.hyper_params["epochs"]),
+            "optimizer_state_dict": deepcopy(self.optimizer_ni.state_dict())
+        }
+
+        if self._is_parallel:
+            checkpoints["model_state_dict"] = deepcopy(self.model_ni.module.state_dict())
+        else:
+            checkpoints["model_state_dict"] = deepcopy(self.model_ni.state_dict())
+
+        return checkpoints
+
     def save_checkpoint_n(self) -> dict:
         """
         The method of saving trained PyTorch model.
@@ -524,6 +715,7 @@ class NeuralNetworkClassifier:
             checkpoints["model_state_dict"] = deepcopy(self.model_n.state_dict())
 
         return checkpoints
+
 
     def save_checkpoint_s(self) -> dict:
         """
@@ -559,7 +751,87 @@ class NeuralNetworkClassifier:
 
         return checkpoints
 
+    def save_to_file_normal_improve(self, path: str) -> str:
+        """
+        | The method of saving trained PyTorch model to file.
+        | Those weights are uploaded to comet.ml as backup.
+        | check "Asserts".
+
+        Note, .pth file contains
+            - the number of last epoch as `epochs`
+            - optimizer state as `optimizer_state_dict`
+            - model state as `model_state_dict`
+
+        ::
+
+            clf = NeuralNetworkClassifier(
+                    Network(), nn.CrossEntropyLoss(),
+                    optim.Adam, optimizer_config, experiment
+                )
+
+            clf.fit(train_loader, epochs=10)
+            filename = clf.save_to_file('path/to/save/dir/')
+
+        :param path: path to saving directory. : string
+        :return: path to file : string
+        """
+        if not os.path.isdir(path):
+            os.mkdir(path)
+
+        # file_name = "model_params-epochs_{}-{}.pth".format(
+        #     self.hyper_params["epochs"], time.ctime().replace(" ", "_")
+        # )
+        file_name = "trained_model_normal_improve.pth"
+        path = path + file_name
+
+        checkpoints = self.save_checkpoint_n_improve()
+
+        torch.save(checkpoints, path)
+        self.experiment.log_asset(path, file_name=file_name)
+
+        return path
+
     def save_to_file_normal(self, path: str) -> str:
+        """
+        | The method of saving trained PyTorch model to file.
+        | Those weights are uploaded to comet.ml as backup.
+        | check "Asserts".
+
+        Note, .pth file contains
+            - the number of last epoch as `epochs`
+            - optimizer state as `optimizer_state_dict`
+            - model state as `model_state_dict`
+
+        ::
+
+            clf = NeuralNetworkClassifier(
+                    Network(), nn.CrossEntropyLoss(),
+                    optim.Adam, optimizer_config, experiment
+                )
+
+            clf.fit(train_loader, epochs=10)
+            filename = clf.save_to_file('path/to/save/dir/')
+
+        :param path: path to saving directory. : string
+        :return: path to file : string
+        """
+        if not os.path.isdir(path):
+            os.mkdir(path)
+
+        # file_name = "model_params-epochs_{}-{}.pth".format(
+        #     self.hyper_params["epochs"], time.ctime().replace(" ", "_")
+        # )
+        file_name = "trained_model_normal.pth"
+        path = path + file_name
+
+        checkpoints = self.save_checkpoint_n()
+
+        torch.save(checkpoints, path)
+        self.experiment.log_asset(path, file_name=file_name)
+
+        return path
+
+    def save_to_file_normal_improve(self, path: str) -> str:
         """
         | The method of saving trained PyTorch model to file.
         | Those weights are uploaded to comet.ml as backup.
