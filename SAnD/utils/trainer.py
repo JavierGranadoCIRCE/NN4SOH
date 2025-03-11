@@ -861,10 +861,10 @@ class NeuralNetworkClassifier:
         # file_name = "model_params-epochs_{}-{}.pth".format(
         #     self.hyper_params["epochs"], time.ctime().replace(" ", "_")
         # )
-        file_name = "trained_model_normal.pth"
+        file_name = "trained_model_normal_improve.pth"
         path = path + file_name
 
-        checkpoints = self.save_checkpoint_n()
+        checkpoints = self.save_checkpoint_n_improve()
 
         torch.save(checkpoints, path)
         self.experiment.log_asset(path, file_name=file_name)

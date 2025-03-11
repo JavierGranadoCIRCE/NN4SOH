@@ -127,9 +127,9 @@ y_test = labels[7093:]#7093
 train_ds = TensorDataset(x_train, y_train)
 val_ds = TensorDataset(x_val, y_val)
 test_ds = TensorDataset(x_test, y_test)
-train_loader = DataLoader(train_ds, batch_size=1)
-val_loader = DataLoader(val_ds, batch_size=1)
-test_loader = DataLoader(test_ds, batch_size=1)
+train_loader = DataLoader(train_ds, batch_size=64)
+val_loader = DataLoader(val_ds, batch_size=64)
+test_loader = DataLoader(test_ds, batch_size=64)
 
 
 # plt.hist(y_train, bins=20, edgecolor='black', alpha=0.7)
@@ -211,7 +211,6 @@ clf = NeuralNetworkClassifier(
                             project_name="nn4soh",
                             workspace="javiergranadocirce")
 
-
 )
 
 
@@ -220,7 +219,7 @@ clf = NeuralNetworkClassifier(
 #          {"train": train_loader,
 #       "val": val_loader,
 #       "test": test_loader},
-#       epochs=80
+#       epochs=1
 #  )
 
 # training network Improve
@@ -256,7 +255,7 @@ clf.fit_normal_improve(x_train, y_train, x_val, y_val, x_test, y_test,
 # clf.evaluate(test_loader)
 
 # save
-#clf.save_to_file_normal("save_params/")
+# clf.save_to_file_normal("save_params/")
 clf.save_to_file_normal_improve("save_params/")
 #clf.save_to_file_siamese("save_params/")
 
@@ -264,17 +263,18 @@ clf.save_to_file_normal_improve("save_params/")
 
 
 # # Conversión a ONNX
-# # Cargar el modelo entrenado
+# Cargar el modelo entrenado
 # modelo = SAnD(in_feature, seq_len, n_heads, factor, num_class, num_layers)
-# modelo_siamese = SiameseSAnD(SAnD_Embedding(in_feature, seq_len, n_heads, factor, num_class, num_layers))
-# # Verificar los atributos de modelo_siamese
-# # print(modelo_siamese)
-# # # Verificar los atributos de modelo_normal
-# # print(modelo_normal)
-# # # Copiar pesos de la parte compartida del modelo siamesa al modelo normal
-# # Transferir pesos del modelo siamesa al modelo normal
-# modelo.encoder.load_state_dict(modelo_siamese.sand.encoder.state_dict())  # Transferir encoder
-# modelo.dense_interpolation.load_state_dict(modelo_siamese.sand.dense_interpolation.state_dict())  # Transferir dense_interpolation
+modelo = SAnDImprove(in_feature, seq_len, n_heads, factor, num_class, num_layers)
+#modelo_siamese = SiameseSAnD(SAnD_Embedding(in_feature, seq_len, n_heads, factor, num_class, num_layers))
+# Verificar los atributos de modelo_siamese
+# print(modelo_siamese)
+# # Verificar los atributos de modelo_normal
+# print(modelo_normal)
+# # Copiar pesos de la parte compartida del modelo siamesa al modelo normal
+# Transferir pesos del modelo siamesa al modelo normal
+#modelo.encoder.load_state_dict(modelo_siamese.sand.encoder.state_dict())  # Transferir encoder
+#modelo.dense_interpolation.load_state_dict(modelo_siamese.sand.dense_interpolation.state_dict())  # Transferir dense_interpolation
 #
 #
 # print("Pesos transferidos correctamente.")
@@ -282,24 +282,36 @@ clf.save_to_file_normal_improve("save_params/")
 #
 # # 2. Cargar el diccionario de estado correctamente
 # checkpoint = torch.load("save_params/trained_model_normal.pth", map_location="cpu")
-# # checkpoint = torch.load("save_params/trained_model_siamese.pth", map_location="cpu")
-# modelo.load_state_dict(checkpoint["model_state_dict"])  # Extrae solo "model_state_dict"
+checkpoint = torch.load("save_params/trained_model_normal_improve.pth", map_location="cpu")
+# checkpoint = torch.load("save_params/trained_model_siamese.pth", map_location="cpu")
+
+print("Claves en checkpoint:")
+print(checkpoint["model_state_dict"].keys())
+
+modelo = SAnDImprove(in_feature, seq_len, n_heads, factor, num_class, num_layers)
+print("\nClaves en el modelo actual:")
+print(modelo.state_dict().keys())
+
+
+modelo.load_state_dict(checkpoint["model_state_dict"])  # Extrae solo "model_state_dict"
 # modelo.eval()
 #
 # # Crear un dummy input (ajusta el tamaño según tu entrada real)
 #
-# input_shape = (400, 3)
-# dummy_input = torch.randn(1, *input_shape)
+input_shape = (400, 3)
+dummy_input = torch.randn(1, *input_shape)
 #
 # # Exportar a ONNX
-# # torch.onnx.export(modelo, dummy_input, "save_params/trained_model_normal.onnx", opset_version=13)
+# torch.onnx.export(modelo, dummy_input, "save_params/trained_model_normal.onnx", opset_version=13)
 # torch.onnx.export(modelo, dummy_input, "save_params/trained_model_siamese.onnx", opset_version=13)
+torch.onnx.export(modelo, dummy_input, "save_params/trained_model_normal_improve.onnx", opset_version=13)
 
 #
 #
 # #Inferencia en PC
 # Cargar el modelo ONNX
-session = ort.InferenceSession("save_params/trained_model_normal.onnx")
+# session = ort.InferenceSession("save_params/trained_model_normal.onnx")
+session = ort.InferenceSession("save_params/trained_model_normal_improve.onnx")
 # session = ort.InferenceSession("save_params/trained_model_siamese.onnx")
 
 # Obtener nombres de las entradas del modelo
