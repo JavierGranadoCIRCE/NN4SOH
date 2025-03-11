@@ -127,9 +127,9 @@ y_test = labels[7093:]#7093
 train_ds = TensorDataset(x_train, y_train)
 val_ds = TensorDataset(x_val, y_val)
 test_ds = TensorDataset(x_test, y_test)
-train_loader = DataLoader(train_ds, batch_size=16)
-val_loader = DataLoader(val_ds, batch_size=16)
-test_loader = DataLoader(test_ds, batch_size=16)
+train_loader = DataLoader(train_ds, batch_size=8)
+val_loader = DataLoader(val_ds, batch_size=8)
+test_loader = DataLoader(test_ds, batch_size=8)
 
 
 # plt.hist(y_train, bins=20, edgecolor='black', alpha=0.7)
@@ -205,7 +205,7 @@ clf = NeuralNetworkClassifier(
     ContrastiveLoss(),
     nn.MSELoss(),
     nn.MSELoss(),
-    optim.Adam, optimizer_config={"lr": 1e-3, "betas": (0.9, 0.98), "eps": 4e-09, "weight_decay": 5e-4},
+    optimizer=optim.Adam, optimizer_config={"lr": 1e-4, "betas": (0.9, 0.98), "eps": 4e-09, "weight_decay": 5e-4},
     #experiment=Experiment("8mKGHiYeg2P7dZEFlvQv3PEzc")
     experiment = Experiment(api_key="Td3ICbNoK8hW14nwxZfp10SGN",
                             project_name="nn4soh",

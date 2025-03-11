@@ -1,5 +1,7 @@
 import os
 import time
+from sched import scheduler
+import numpy as np
 import tqdm
 import pandas as pd
 from copy import deepcopy
@@ -7,9 +9,15 @@ from typing import Dict
 
 import torch
 import torch.nn as nn
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.data import DataLoader
 from sklearn.metrics import confusion_matrix
 from SAnD.utils.functions import generar_pares_aleatorios
+from torch.optim.lr_scheduler import ReduceLROnPlateau
+import torch.optim as optim
+from torch.optim.lr_scheduler import ReduceLROnPlateau
+# from transformer import train_loader, val_loader
+from SAnD.utils.early_stopping import EarlyStopping
 
 
 
@@ -113,8 +121,17 @@ class NeuralNetworkClassifier:
         self.hyper_params["epochs"] = self._start_epoch
         self.__num_classes = None
         self._is_parallel = False
+        self.early_stopping = EarlyStopping(patience=5, delta=0.001)
+        # self.optimizer = optim.Adam(self.model_ni.parameters(), lr=1e-3)
+        self.scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+            self.optimizer_ni, mode='min', patience=5, factor=0.5, verbose=True
+        )
 
 
+        
+        # Crear el objeto de early stopping
+        early_stopping = EarlyStopping(patience=5, delta=0.001)  
+        
         # if torch.cuda.device_count() > 1:
         #     self.model = nn.DataParallel(self.model)
         #     self._is_parallel = True
@@ -433,7 +450,8 @@ class NeuralNetworkClassifier:
 
             pbar.close()
 
-    def fit_normal_improve(self,x_train, y_train, x_val, y_val, x_test, y_test, loader: Dict[str, DataLoader], epochs: int, checkpoint_path: str = None, validation: bool = True, test: bool = True) -> None:
+    def fit_normal_improve(self, x_train, y_train, x_val, y_val, x_test, y_test, loader: Dict[str, DataLoader], epochs: int, checkpoint_path: str = None, validation: bool = True, test: bool = True,
+                           early_stopping=None) -> None:
         """
         | The method of training your PyTorch Model.
         | With the assumption, This method use for training network for classification.
@@ -546,9 +564,17 @@ class NeuralNetworkClassifier:
                             _, val_pred = torch.max(val_output, 1)
                             val_correct += (val_pred == y_val).sum().float().item()
 
-                            # self.experiment.log_metric("loss", val_loss.item(), step=epoch)
-                            # self.experiment.log_metric("accuracy", float(val_correct / val_total), step=epoch)
-
+                            self.experiment.log_metric("loss", val_loss.item(), step=epoch)
+                            self.experiment.log_metric("accuracy", float(val_correct / val_total), step=epoch)
+                    # Usamos el scheduler para ajustar el learning rate
+                    # if self.scheduler is not None:
+                    #     self.scheduler.step(val_loss)
+                    # print(f'Epoch {epoch+1}/{epochs}, Train Loss: {train_loss/len(loader["train"])}, Validation Loss: {val_loss/len(loader["val"])}')
+                    # Llamar a early stopping
+                    # if self.early_stopping is not None and self.early_stopping.early_stop:
+                    #     print("Early stopping triggered.")
+                    # break  # Detener entrenamiento
+                    
             if test:
                 len_of_test_dataset = len(loader["test"].dataset)
                 with self.experiment.test():
@@ -581,8 +607,8 @@ class NeuralNetworkClassifier:
                             running_loss += test_loss.item()
                             running_corrects += torch.sum(test_predicted == y_test).float().item()
 
-                            self.experiment.log_metric("loss", running_loss, step=epoch)
-                            self.experiment.log_metric("accuracy", float(running_corrects / test_total))
+                            # self.experiment.log_metric("loss", running_loss, step=epoch)
+                            # self.experiment.log_metric("accuracy", float(running_corrects / test_total))
                             # self.experiment.log_metric("predicted_soh", test_outputs.item(), step=epoch)
                             # self.experiment.log_metric("current_soh", x_test.item(), step=epoch)
                         pbar.close()
