@@ -127,9 +127,9 @@ y_test = labels[7093:]#7093
 train_ds = TensorDataset(x_train, y_train)
 val_ds = TensorDataset(x_val, y_val)
 test_ds = TensorDataset(x_test, y_test)
-train_loader = DataLoader(train_ds, batch_size=1)
-val_loader = DataLoader(val_ds, batch_size=1)
-test_loader = DataLoader(test_ds, batch_size=1)
+train_loader = DataLoader(train_ds, batch_size=16)
+val_loader = DataLoader(val_ds, batch_size=16)
+test_loader = DataLoader(test_ds, batch_size=16)
 
 
 # plt.hist(y_train, bins=20, edgecolor='black', alpha=0.7)
@@ -193,10 +193,10 @@ test_loader = DataLoader(test_ds, batch_size=1)
 # Training
 in_feature = 3
 seq_len = 400
-n_heads = 32
+n_heads = 128
 factor = 32
 num_class = 1
-num_layers = 4
+num_layers = 12
 
 clf = NeuralNetworkClassifier(
     SiameseSAnD(SAnD_Embedding(in_feature, seq_len, n_heads, factor, num_class, num_layers)),
@@ -204,8 +204,8 @@ clf = NeuralNetworkClassifier(
     SAnDImprove(in_feature, seq_len, n_heads, factor, num_class, num_layers),
     ContrastiveLoss(),
     nn.MSELoss(),
-    nn.MSELoss(),
-    optim.Adam, optimizer_config={"lr": 1e-4, "betas": (0.9, 0.98), "eps": 4e-09, "weight_decay": 5e-4},
+    nn.SmoothL1Loss(),  # Cambiar a SmoothL1Loss,
+    optim.AdamW,optimizer_config={"lr": 1e-4, "betas": (0.9, 0.98), "eps": 1e-09, "weight_decay": 5e-4},
     #experiment=Experiment("8mKGHiYeg2P7dZEFlvQv3PEzc")
     experiment = Experiment(api_key="Td3ICbNoK8hW14nwxZfp10SGN",
                             project_name="nn4soh",
