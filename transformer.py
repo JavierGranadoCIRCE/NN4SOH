@@ -35,8 +35,8 @@ from SAnD.core.model import SAnD, SAnD_Embedding, SiameseSAnD, SAnDImprove
 from SAnD.utils.functions import generar_pares_aleatorios
 from SAnD.utils.trainer import NeuralNetworkClassifier
 
-######################################## Commit nueva rama merge entre Dataset complet y entrenamiento Siames 18022025
-######################################## Commit nueva rama merge entre Dataset complet y entrenamiento Siames 18022025
+######################################## Nueva rama normal_improve 12/03/2025
+
 
 # Real Dataset Generator
 #dataFile = 'dataset/ARC-FY/B0025'   # Modify this path
