@@ -266,6 +266,7 @@ clf.save_to_file_normal_improve("save_params/")
 # # Conversión a ONNX
 # # Cargar el modelo entrenado
 # modelo = SAnD(in_feature, seq_len, n_heads, factor, num_class, num_layers)
+modelo = SAnDImprove(in_feature, seq_len, n_heads, factor, num_class, num_layers)
 # modelo_siamese = SiameseSAnD(SAnD_Embedding(in_feature, seq_len, n_heads, factor, num_class, num_layers))
 # # Verificar los atributos de modelo_siamese
 # # print(modelo_siamese)
@@ -282,24 +283,26 @@ clf.save_to_file_normal_improve("save_params/")
 #
 # # 2. Cargar el diccionario de estado correctamente
 # checkpoint = torch.load("save_params/trained_model_normal.pth", map_location="cpu")
+checkpoint = torch.load("save_params/trained_model_normal_improve.pth", map_location="cpu")
 # # checkpoint = torch.load("save_params/trained_model_siamese.pth", map_location="cpu")
-# modelo.load_state_dict(checkpoint["model_state_dict"])  # Extrae solo "model_state_dict"
+modelo.load_state_dict(checkpoint["model_state_dict"])  # Extrae solo "model_state_dict"
 # modelo.eval()
 #
 # # Crear un dummy input (ajusta el tamaño según tu entrada real)
 #
-# input_shape = (400, 3)
-# dummy_input = torch.randn(1, *input_shape)
+input_shape = (400, 3)
+dummy_input = torch.randn(1, *input_shape)
 #
 # # Exportar a ONNX
 # # torch.onnx.export(modelo, dummy_input, "save_params/trained_model_normal.onnx", opset_version=13)
 # torch.onnx.export(modelo, dummy_input, "save_params/trained_model_siamese.onnx", opset_version=13)
+torch.onnx.export(modelo, dummy_input, "save_params/trained_model_normal_improve.onnx", opset_version=13)
 
 #
 #
 # #Inferencia en PC
 # Cargar el modelo ONNX
-session = ort.InferenceSession("save_params/trained_model_normal.onnx")
+session = ort.InferenceSession("save_params/trained_model_normal_improve.onnx")
 # session = ort.InferenceSession("save_params/trained_model_siamese.onnx")
 
 # Obtener nombres de las entradas del modelo
