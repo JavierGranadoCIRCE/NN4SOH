@@ -193,10 +193,10 @@ test_loader = DataLoader(test_ds, batch_size=16)
 # Training
 in_feature = 3
 seq_len = 400
-n_heads = 128
-factor = 32
+n_heads = 8
+factor = 16
 num_class = 1
-num_layers = 12
+num_layers = 8
 
 clf = NeuralNetworkClassifier(
     SiameseSAnD(SAnD_Embedding(in_feature, seq_len, n_heads, factor, num_class, num_layers)),
