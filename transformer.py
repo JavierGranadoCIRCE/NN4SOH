@@ -193,10 +193,10 @@ test_loader = DataLoader(test_ds, batch_size=16)
 # Training
 in_feature = 3
 seq_len = 400
-n_heads = 8
-factor = 16
+n_heads = 128
+factor = 32
 num_class = 1
-num_layers = 8
+num_layers = 12
 
 clf = NeuralNetworkClassifier(
     SiameseSAnD(SAnD_Embedding(in_feature, seq_len, n_heads, factor, num_class, num_layers)),
@@ -204,7 +204,9 @@ clf = NeuralNetworkClassifier(
     SAnDImprove(in_feature, seq_len, n_heads, factor, num_class, num_layers),
     ContrastiveLoss(),
     nn.MSELoss(),
-    nn.SmoothL1Loss(),  # Cambiar a SmoothL1Loss,
+    nn.MSELoss(),
+    #nn.SmoothL1Loss(),  # Cambiar a SmoothL1Loss,
+    #optim.AdamW,optimizer_config={"lr": 1e-4, "betas": (0.9, 0.98), "eps": 4e-09, "weight_decay": 5e-4},
     optim.AdamW,optimizer_config={"lr": 1e-4, "betas": (0.9, 0.98), "eps": 1e-09, "weight_decay": 5e-4},
     #experiment=Experiment("8mKGHiYeg2P7dZEFlvQv3PEzc")
     experiment = Experiment(api_key="Td3ICbNoK8hW14nwxZfp10SGN",
