@@ -7,7 +7,7 @@ import torch.nn.functional as F
 
 
 class EncoderLayerForSAnDImprove(nn.Module):
-    def __init__(self, input_features, seq_len, n_heads, n_layers, d_model=256, dropout_rate=0.2) -> None:
+    def __init__(self, input_features, seq_len, n_heads, n_layers, d_model=128, dropout_rate=0.2) -> None:
         super(EncoderLayerForSAnDImprove, self).__init__()
         self.d_model = d_model
 
