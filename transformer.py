@@ -201,7 +201,7 @@ num_layers = 12
 clf = NeuralNetworkClassifier(
     SiameseSAnD(SAnD_Embedding(in_feature, seq_len, n_heads, factor, num_class, num_layers)),
     SAnD(in_feature, seq_len, n_heads, factor, num_class, num_layers),
-    SAnDImprove(in_feature, seq_len, n_heads, factor, num_class, num_layers),
+    SAnDImproveWithDecoder(in_feature, seq_len, n_heads, factor, num_class, num_layers),
     ContrastiveLoss(),
     nn.MSELoss(),
     nn.MSELoss(),

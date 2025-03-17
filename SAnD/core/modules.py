@@ -88,6 +88,50 @@ class EncoderBlock(nn.Module):
         x = self.ffn(x)
         return x
 
+class DecoderBlock(nn.Module):
+    def __init__(self, d_model, n_heads, dropout_rate) -> None:
+        super(DecoderBlock, self).__init__()
+
+        # Capa de Self-Attention
+        self.self_attention = nn.MultiheadAttention(d_model, n_heads, dropout=dropout_rate)
+
+        # Capa de Cross-Attention (Atención cruzada con el encoder)
+        self.cross_attention = nn.MultiheadAttention(d_model, n_heads, dropout=dropout_rate)
+
+        # Capa Feed-forward
+        self.ffn = nn.Sequential(
+            nn.Linear(d_model, d_model * 2),
+            nn.ReLU(),
+            nn.Dropout(dropout_rate),
+            nn.Linear(d_model * 2, d_model)
+        )
+
+        # Capa de Normalización (LayerNorm) para estabilizar el entrenamiento
+        self.norm1 = nn.LayerNorm(d_model)
+        self.norm2 = nn.LayerNorm(d_model)
+        self.norm3 = nn.LayerNorm(d_model)
+
+        # Dropout para regularización
+        self.dropout = nn.Dropout(dropout_rate)
+
+    def forward(self, x: torch.Tensor, memory: torch.Tensor) -> torch.Tensor:
+        # Self-attention
+        x2 = self.norm1(x)
+        attn_output, _ = self.self_attention(x2, x2, x2)  # (seq_len, batch_size, d_model)
+        x = x + self.dropout(attn_output)  # Residual connection
+
+        # Cross-attention (con el encoder)
+        x2 = self.norm2(x)
+        attn_output, _ = self.cross_attention(x2, memory, memory)  # (seq_len, batch_size, d_model)
+        x = x + self.dropout(attn_output)  # Residual connection
+
+        # Feed-forward
+        x2 = self.norm3(x)
+        ffn_output = self.ffn(x2)  # (seq_len, batch_size, d_model)
+        x = x + self.dropout(ffn_output)  # Residual connection
+
+        return x
+
 
 class DenseInterpolation(nn.Module):
     def __init__(self, seq_len: int, factor: int) -> None:

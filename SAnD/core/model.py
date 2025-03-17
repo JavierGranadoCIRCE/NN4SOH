@@ -6,6 +6,76 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
+class DecoderLayerForSAnDImprove(nn.Module):
+    def __init__(self, d_model, n_heads, dropout_rate, n_layers) -> None:
+        super(DecoderLayerForSAnDImprove, self).__init__()
+        self.d_model = d_model
+
+        # Bloques del Decoder
+        self.blocks = nn.ModuleList([modules.DecoderBlock(d_model, n_heads, dropout_rate) for _ in range(n_layers)])
+
+        # Capa densa intermedia (entre los bloques)
+        self.intermediate_dense = nn.Sequential(
+            nn.Linear(d_model, d_model * 2),
+            nn.ReLU(),
+            nn.BatchNorm1d(d_model * 2),  # Añadir Batch Normalization
+            nn.Dropout(dropout_rate),
+            nn.Linear(d_model * 2, d_model)
+        )
+
+    def forward(self, x: torch.Tensor, memory: torch.Tensor) -> torch.Tensor:
+        for l in self.blocks:
+            x = l(x, memory)  # Atención cruzada entre el decoder y el encoder
+
+        # Aplicar la capa intermedia
+        x = self.intermediate_dense[0](x)  # Linear(d_model, d_model * 2)
+        x = self.intermediate_dense[1](x)  # ReLU
+
+        x = x.permute(0, 2, 1)  # (batch_size, d_model * 2, seq_len)
+        x = self.intermediate_dense[2](x)  # BatchNorm1d(d_model * 2)
+        x = x.permute(0, 2, 1)  # (batch_size, seq_len, d_model * 2)
+
+        x = self.intermediate_dense[3](x)  # Dropout
+        x = self.intermediate_dense[4](x)  # Linear(d_model * 2, d_model)
+
+        return x
+
+class SAnDImproveWithDecoder(nn.Module):
+    """
+    Simply Attend and Diagnose model with an Encoder-Decoder Architecture.
+    """
+    def __init__(
+            self, input_features: int, seq_len: int, n_heads: int, factor: int,
+            n_class: int, n_layers: int, d_model: int = 128, dropout_rate: float = 0.2
+    ) -> None:
+        super(SAnDImproveWithDecoder, self).__init__()
+        # Encoder
+        self.encoder = EncoderLayerForSAnDImprove(input_features, seq_len, n_heads, n_layers, d_model, dropout_rate)
+
+        # Decoder
+        self.decoder = DecoderLayerForSAnDImprove(d_model, n_heads, dropout_rate, n_layers)
+
+        # Capa de interpolación densa
+        self.dense_interpolation = modules.DenseInterpolation(seq_len, factor)
+
+        # Capa de clasificación
+        self.clf = modules.ClassificationModule(d_model, factor, n_class)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        # Paso por el encoder
+        memory = self.encoder(x)
+
+        # Paso por el decoder (pasamos la salida del encoder como "memory")
+        x = self.decoder(x, memory)
+
+        # Interpolación densa
+        x = self.dense_interpolation(x)
+
+        # Clasificación
+        x = self.clf(x)
+
+        return x
+
 class EncoderLayerForSAnDImprove(nn.Module):
     def __init__(self, input_features, seq_len, n_heads, n_layers, d_model=128, dropout_rate=0.2) -> None:
         super(EncoderLayerForSAnDImprove, self).__init__()
