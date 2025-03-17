@@ -207,7 +207,7 @@ clf = NeuralNetworkClassifier(
     nn.MSELoss(),
     #nn.SmoothL1Loss(),  # Cambiar a SmoothL1Loss,
     #optim.AdamW,optimizer_config={"lr": 1e-4, "betas": (0.9, 0.98), "eps": 4e-09, "weight_decay": 5e-4},
-    optim.AdamW,optimizer_config={"lr": 5e-4, "betas": (0.9, 0.98), "eps": 1e-09, "weight_decay": 5e-4},
+    optim.AdamW,optimizer_config={"lr": 6e-4, "betas": (0.9, 0.98), "eps": 1e-09, "weight_decay": 5e-4},
     #experiment=Experiment("8mKGHiYeg2P7dZEFlvQv3PEzc")
     experiment = Experiment(api_key="Td3ICbNoK8hW14nwxZfp10SGN",
                             project_name="nn4soh",

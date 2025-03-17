@@ -16,7 +16,7 @@ class EncoderLayerForSAnDImprove(nn.Module):
 
         # Aumentar el número de bloques
         self.blocks = nn.ModuleList([modules.EncoderBlock(d_model, n_heads, dropout_rate) for _ in range(n_layers)])
-
+        self.blocks = nn.ModuleList([modules.EncoderBlock(d_model, n_heads, dropout_rate) for _ in range(n_layers)])
         # Capa densa intermedia (entre los bloques)
         self.intermediate_dense = nn.Sequential(
             nn.Linear(d_model, d_model * 2),
