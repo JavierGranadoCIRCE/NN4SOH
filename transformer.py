@@ -317,26 +317,58 @@ print(f"Nombre de la entrada: {input_name}")
 # # Realizar la inferencia
 # outputs = session.run(None, {input_name: dummy_input})
 
-# Inicializar listas para almacenar predicciones y etiquetas reales
+# Inicializar las listas para las predicciones y etiquetas reales
 predicciones = []
 etiquetas_reales = []
 
+# Inicializar las variables para los cálculos de error
+mae_total = 0
+mse_total = 0
+mse_sum = 0
+mape_total = 0
+
 # Recorrer todos los ejemplos de test
 for idx in range(len(x_test)):
-    # Seleccionar un ejemplo de test (por ejemplo, el primero)
-    # idx = 0  # Puedes cambiarlo para probar otros ejemplos
+    # Seleccionar un ejemplo de test
     x_sample = x_test[idx].numpy().astype(np.float32)  # Convertir de tensor a numpy
     x_sample = np.expand_dims(x_sample, axis=0)  # Añadir batch dimension
 
     # Realizar la inferencia
     outputs = session.run(None, {input_name: x_sample})
+
     # Guardar la predicción y la etiqueta real
     predicciones.append(outputs)
     etiquetas_reales.append(y_test[idx].item())
 
-    # Mostrar resultado parcial
-    print(f"Ejemplo {idx + 1}/{len(x_test)} -> Predicción: {outputs}, Etiqueta Real: {y_test[idx].item()}")
+    # Calcular los errores para este ejemplo
+    pred = outputs[0]  # Asumiendo que la salida de la inferencia está en la primera posición
+    real = y_test[idx].item()
 
+    # Calcular el error absoluto
+    mae_total += np.abs(pred - real)
+
+    # Calcular el error cuadrático
+    mse_sum += (pred - real) ** 2
+
+    # Calcular la desviación relativa media (MAPE)
+    if real != 0:  # Evitar división por cero
+        mape_total += np.abs((pred - real) / real)
+
+    # Mostrar resultado parcial
+    print(f"Ejemplo {idx + 1}/{len(x_test)} -> Predicción: {pred}, Etiqueta Real: {real}")
+
+# Cálculo de las métricas finales
+mae = mae_total / len(x_test)
+mse = mse_sum / len(x_test)
+rmse = np.sqrt(mse)
+mape = (mape_total / len(x_test)) * 100  # Convertir a porcentaje
+
+# Mostrar los resultados finales
+print(f"\nMétricas finales:")
+print(f"MAE (Error Absoluto Medio): {mae}")
+print(f"MSE (Error Cuadrático Medio): {mse}")
+print(f"RMSE (Raíz del Error Cuadrático Medio): {rmse}")
+print(f"MAPE (Desviación Relativa Media): {mape}%")
 
 # # # Obtener la etiqueta real
 # # y_real = y_test[idx].item()  # Convertir a valor escalar si es necesario
