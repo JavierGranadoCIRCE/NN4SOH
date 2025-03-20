@@ -7,6 +7,7 @@ from typing import Dict
 
 import torch
 import torch.nn as nn
+from torch import optim
 from torch.utils.data import DataLoader
 from sklearn.metrics import confusion_matrix
 from SAnD.utils.functions import generar_pares_aleatorios
@@ -113,6 +114,9 @@ class NeuralNetworkClassifier:
         self.hyper_params["epochs"] = self._start_epoch
         self.__num_classes = None
         self._is_parallel = False
+
+        # Suponiendo que tienes un modelo ya definido llamado `model`
+        optimizer = optim.AdamW(model_ni.parameters(), lr=1e-3)
 
 
         # if torch.cuda.device_count() > 1:
@@ -461,6 +465,10 @@ class NeuralNetworkClassifier:
         :param validation:
         :return: None
         """
+
+
+        # Definir el scheduler StepLR: reduce el learning rate cada 10 epochs por un factor de 0.1
+        scheduler = optim.lr_scheduler.StepLR(self.optimizer_ni, step_size=10, gamma=0.1)
         len_of_train_dataset = len(loader["train"].dataset)
         epochs = epochs + self._start_epoch
 
@@ -548,6 +556,10 @@ class NeuralNetworkClassifier:
 
                             # self.experiment.log_metric("loss", val_loss.item(), step=epoch)
                             # self.experiment.log_metric("accuracy", float(val_correct / val_total), step=epoch)
+            # Paso del scheduler después de cada epoch
+            scheduler.step()
+            # Mostrar el learning rate actual
+            print(f'Epoch [{epoch+1}/{epochs}], Learning Rate: {scheduler.get_last_lr()[0]}')
 
             if test:
                 len_of_test_dataset = len(loader["test"].dataset)
