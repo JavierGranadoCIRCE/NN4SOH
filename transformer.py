@@ -374,7 +374,7 @@ print(f"MAPE (Desviación Relativa Media): {mape}%")
 
 # # # Obtener la etiqueta real
 # # y_real = y_test[idx].item()  # Convertir a valor escalar si es necesario
-# #
+# ##
 # # # Mostrar la salida
 # # print("Resultado de la inferencia:", outputs)
 # # print(f"Etiqueta real: {y_real}")
