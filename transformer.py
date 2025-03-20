@@ -216,7 +216,7 @@ clf = NeuralNetworkClassifier(
 
 )
 
-
+###
 # training network Normal
 # clf.fit_normal(x_train, y_train, x_val, y_val, x_test, y_test,
 #          {"train": train_loader,
