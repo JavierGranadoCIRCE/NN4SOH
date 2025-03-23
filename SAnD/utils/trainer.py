@@ -468,7 +468,8 @@ class NeuralNetworkClassifier:
 
 
         # Definir el scheduler StepLR: reduce el learning rate cada 10 epochs por un factor de 0.1
-        scheduler = optim.lr_scheduler.StepLR(self.optimizer_ni, step_size=10, gamma=0.1)
+        # scheduler = optim.lr_scheduler.StepLR(self.optimizer_ni, step_size=5, gamma=0.5)
+        scheduler = optim.lr_scheduler.CosineAnnealingLR(self.optimizer_ni, T_max=50, eta_min=1e-6)
         len_of_train_dataset = len(loader["train"].dataset)
         epochs = epochs + self._start_epoch
 

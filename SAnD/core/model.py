@@ -11,7 +11,7 @@ class EncoderLayerForSAnDImprove(nn.Module):
         super(EncoderLayerForSAnDImprove, self).__init__()
         self.d_model = d_model
 
-        self.input_embedding = nn.Conv1d(input_features, d_model, 1)
+        self.input_embedding = nn.Conv1d(input_features, d_model, kernel_size=3, padding=1)
         self.positional_encoding = modules.PositionalEncoding(d_model, seq_len)
 
         # Aumentar el número de bloques
@@ -20,7 +20,7 @@ class EncoderLayerForSAnDImprove(nn.Module):
         # Capa densa intermedia (entre los bloques)
         self.intermediate_dense = nn.Sequential(
             nn.Linear(d_model, d_model * 2),
-            nn.ReLU(),
+            nn.LeakyReLU(0.01),
             nn.BatchNorm1d(d_model * 2),  # Añadir Batch Normalization
             nn.Dropout(dropout_rate),
             nn.Linear(d_model * 2, d_model)
