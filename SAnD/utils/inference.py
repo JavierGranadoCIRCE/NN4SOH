@@ -131,7 +131,7 @@ class Inference_SoH_Normal:
         # Llamar a la función de visualización
         #self.plot_soh(soh_real, soh_pred)
 
-        return soh_pred
+        return soh_pred, soh_real
 
     def plot_soh(self, soh_real, soh_pred):
         """Genera un gráfico comparando SoH real vs. SoH predicho."""
