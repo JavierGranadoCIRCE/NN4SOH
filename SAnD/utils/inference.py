@@ -199,4 +199,4 @@ class Inference_SoH_Normal_Improve:
         # Llamar a la función de visualización
         #self.plot_soh(soh_real, soh_pred)
 
-        return soh_pred
+        return soh_pred, soh_real
