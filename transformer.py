@@ -262,7 +262,7 @@ if train ==  True:
                 {"train": train_loader,
             "val": val_loader,
             "test": test_loader},
-            epochs=1
+            epochs=80
     )
     # # # #
     # # # #
@@ -314,7 +314,7 @@ if train ==  True:
     checkpoint = torch.load("save_params/trained_model_siamese.pth", map_location="cpu")
     siamese_model.load_state_dict(checkpoint["model_state_dict"], strict=False)
 
-    # # # modelo.eval()
+    siamese_model.eval()
     # # #
     # # # # Crear un dummy input (ajusta el tamaño según tu entrada real)
     # # #

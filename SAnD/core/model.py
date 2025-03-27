@@ -147,7 +147,7 @@ class SAnD_Embedding(nn.Module):
             nn.ReLU(),
             nn.Dropout(0.2),
             nn.LayerNorm(256),
-            nn.Linear(256, 128)  # Reducimos de nuevo a 128
+            nn.Linear(256, 1)  # Reducimos de nuevo a 128
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
