@@ -483,7 +483,7 @@ class NeuralNetworkClassifier:
 
         if test:
             len_of_test_dataset = len(loader["test"].dataset)
-            self.hyper_params["test_ds_size"] = len_of_val_dataset
+            self.hyper_params["test_ds_size"] = len_of_test_dataset
 
         self.experiment.log_parameters(self.hyper_params)
 
@@ -511,9 +511,20 @@ class NeuralNetworkClassifier:
                     train_loss = self.criterion_ni(train_output, y_train)
                     train_loss.backward()
                     self.optimizer_ni.step()
-                    _, train_pred = torch.max(train_output, 1)
-                    #val_correct += (val_pred == y_val).sum().float().item()
-                    train_correct += (train_pred.to(self.device) == y_train.to(self.device)).sum().float().item()
+                    # _, train_pred = torch.max(train_output, 1)
+                    # #val_correct += (val_pred == y_val).sum().float().item()
+                    # train_correct += (train_pred.to(self.device) == y_train.to(self.device)).sum().float().item()
+
+                    # Predicciones continuas
+                    train_pred = train_output
+
+                    # Comparar las predicciones con las etiquetas reales usando una métrica de error
+                    train_loss = torch.nn.functional.mse_loss(train_pred, y_train.to(self.device))
+
+                    # Si quieres llevar un conteo de cuántas predicciones están cerca del valor real (por ejemplo, dentro de un umbral)
+                    threshold = 0.1  # Definir un umbral de tolerancia para considerarlo "correcto"
+                    train_correct += ((train_pred - y_train.to(self.device)).abs() < threshold).sum().float().item()
+
 
                     self.experiment.log_metric("loss", train_loss.item(), step=epoch)
                     self.experiment.log_metric("accuracy", float(train_correct / total_samples), step=epoch)
@@ -587,15 +598,27 @@ class NeuralNetworkClassifier:
                             )
                             pbar.update(b_size)
                             test_outputs = self.model_ni(x_test)
-                            test_loss = self.criterion_ni(test_outputs, y_test)
-                            _, test_predicted = torch.max(test_outputs, 1)
-                            test_correct += (test_predicted == y_test).sum().float().item()
+                            # test_loss = self.criterion_ni(test_outputs, y_test)
+                            # _, test_predicted = torch.max(test_outputs, 1)
+                            # test_correct += (test_predicted.to(self.device) == y_test.to(self.device)).sum().float().item()
+                            # running_corrects += torch.sum(test_predicted == y_test).float().item()
+                            #
+                            # self.experiment.log_metric("loss", test_loss, step=epoch)
+                            # self.experiment.log_metric("accuracy", float(running_corrects / test_total))
 
-                            running_loss += test_loss.item()
-                            running_corrects += torch.sum(test_predicted == y_test).float().item()
 
-                            self.experiment.log_metric("loss", running_loss, step=epoch)
-                            self.experiment.log_metric("accuracy", float(running_corrects / test_total))
+                            # Predicciones continuas
+                            test_predicted = test_outputs
+                            # Comparar las predicciones con las etiquetas reales usando una métrica de error
+                            test_loss = torch.nn.functional.mse_loss(test_predicted, y_test.to(self.device))
+                            # Si quieres llevar un conteo de cuántas predicciones están cerca del valor real (por ejemplo, dentro de un umbral)
+                            threshold = 0.1  # Definir un umbral de tolerancia para considerarlo "correcto"
+                            test_correct += ((test_predicted - y_test.to(self.device)).abs() < threshold).sum().float().item()
+
+                            self.experiment.log_metric("loss", test_loss.item(), step=epoch)
+                            self.experiment.log_metric("accuracy", float(test_correct / total_samples), step=epoch)
+
+
                             # self.experiment.log_metric("predicted_soh", test_outputs.item(), step=epoch)
                             # self.experiment.log_metric("current_soh", x_test.item(), step=epoch)
                         pbar.close()

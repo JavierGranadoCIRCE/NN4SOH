@@ -37,7 +37,10 @@ from SAnD.core.modules import ContrastiveLoss
 from SAnD.core.model import SAnD, SAnD_Embedding, SiameseSAnD, SAnDImprove
 from SAnD.utils.functions import generar_pares_aleatorios
 from SAnD.utils.trainer import NeuralNetworkClassifier
-
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.model_selection import train_test_split
+import torch
+from torch.utils.data import TensorDataset, DataLoader
 ######################################## Nueva rama normal_improve 12/03/2025
 
 
@@ -118,21 +121,35 @@ print(data.shape)
 data=torch.from_numpy(data).type(torch.FloatTensor)
 labels=torch.from_numpy(np.array(labels)).type(torch.FloatTensor)
 
-# data_set = list(zip(data, labels))
-# np.random.shuffle(data_set)
-# data, labels = data_set[0], data_set[1]
-x_train = data[:7023]
-x_val = data[7023: 7093]
-x_test = data[7093:]
-y_train = labels[:7023] ##7023
-y_val = labels[7023: 7093]#7023: 7093
-y_test = labels[7093:]#7093
+# Escalar etiquetas
+label_scaler = MinMaxScaler()
+labels = label_scaler.fit_transform(np.array(labels).reshape(-1, 1)).flatten()
+
+# Dividir en train, val y test (estratificado si `labels` tiene clases desbalanceadas)
+x_train, x_temp, y_train, y_temp = train_test_split(data, labels, test_size=0.2, random_state=42)
+x_val, x_test, y_val, y_test = train_test_split(x_temp, y_temp, test_size=0.5, random_state=42)
+
+# Convertir a tensores
+x_train = torch.tensor(x_train, dtype=torch.float32)
+x_val = torch.tensor(x_val, dtype=torch.float32)
+x_test = torch.tensor(x_test, dtype=torch.float32)
+
+y_train = torch.tensor(y_train, dtype=torch.float32)
+y_val = torch.tensor(y_val, dtype=torch.float32)
+y_test = torch.tensor(y_test, dtype=torch.float32)
+
+# Shuffle los datos (opcional si `train_test_split` ya los aleatoriza)
+indices = torch.randperm(len(x_train))
+x_train, y_train = x_train[indices], y_train[indices]
+
+# Crear DataLoaders
 train_ds = TensorDataset(x_train, y_train)
 val_ds = TensorDataset(x_val, y_val)
 test_ds = TensorDataset(x_test, y_test)
-train_loader = DataLoader(train_ds, batch_size=16)
-val_loader = DataLoader(val_ds, batch_size=16)
-test_loader = DataLoader(test_ds, batch_size=16)
+
+train_loader = DataLoader(train_ds, batch_size=16, shuffle=True)
+val_loader = DataLoader(val_ds, batch_size=16, shuffle=False)
+test_loader = DataLoader(test_ds, batch_size=16, shuffle=False)
 
 
 # plt.hist(y_train, bins=20, edgecolor='black', alpha=0.7)
@@ -211,8 +228,8 @@ clf = NeuralNetworkClassifier(
     SAnDImprove(in_feature, seq_len, n_heads, factor, num_class, num_layers),
     ContrastiveLoss(),
     nn.MSELoss(),
-    nn.MSELoss(),
-    #nn.SmoothL1Loss(),  # Cambiar a SmoothL1Loss,
+    #nn.MSELoss(),
+    nn.SmoothL1Loss(beta=0.1),  # Cambiar a SmoothL1Loss,
     #optim.AdamW,optimizer_config={"lr": 1e-4, "betas": (0.9, 0.98), "eps": 4e-09, "weight_decay": 5e-4},
     optim.AdamW,optimizer_config={"lr": 1e-5, "betas": (0.9, 0.98), "eps": 1e-09, "weight_decay": 5e-4},
     #experiment=Experiment("8mKGHiYeg2P7dZEFlvQv3PEzc")
@@ -222,103 +239,103 @@ clf = NeuralNetworkClassifier(
 
 
 )
+train = False
+if train ==  True:
+    # # training network Normal
+    # clf.fit_normal(x_train, y_train, x_val, y_val, x_test, y_test,
+    #         {"train": train_loader,
+    #       "val": val_loader,
+    #       "test": test_loader},
+    #       epochs=80
+    #)
 
-
-# # # training network Normal
-# # clf.fit_normal(x_train, y_train, x_val, y_val, x_test, y_test,
-# #         {"train": train_loader,
-# #       "val": val_loader,
-# #       "test": test_loader},
-# #       epochs=80
-# #)
+    # #training network Improve
+    clf.fit_normal_improve(x_train, y_train, x_val, y_val, x_test, y_test,
+             {"train": train_loader,
+          "val": val_loader,
+          "test": test_loader},
+          epochs=80
+    )
+    # # # #
+    # # # # # training network Siamese
+    # # # # # clf.fit_siamese(x_train, y_train, x_val, y_val, x_test, y_test,
+    # # # # #             {"train": train_loader,
+    # # # # #         "val": val_loader,
+    # # # # #         "test": test_loader},
+    # # # # #         epochs=80
+    # # # # # )
+    # # # #
+    # # # #
+    # # # #
+    # # # # #Inference SoH Siames ###############################
+    # # # # #inference_model = Inference_SoH_Siamese("save_params/trained_model_siamese.pth", input_features=3, seq_len=400, n_heads=32, factor=32, n_class=1, n_layers=4)
+    # # # # #soh_predictions = inference_model.predict(test_loader)
+    # # # # #Inference SoH ###############################
+    # # # #
+    # # # # #Inference SoH Normal ###############################
+    # # # # # inference_model = Inference_SoH_Normal("save_params/trained_model_normal.pth", input_features=3, seq_len=400, n_heads=32, factor=32, n_class=1, n_layers=4)
+    # # # # # soh_predictions = inference_model.predict(test_loader)
+    # # # # #Inference SoH ###############################
+    # # # #
+    # # # # # evaluating
+    # # # # # clf.restore_from_file("save_params/trained model.pth", "cuda")
+    # # # # # clf.evaluate(test_loader)
+    # # # #
+    # # # # save
+    # # clf.save_to_file_normal("save_params/")
+    clf.save_to_file_normal_improve("save_params/")
+    # # # #clf.save_to_file_siamese("save_params/")
+    # # #
+    # # #
+    # # #
+    # # #
+    # # # # Conversión a ONNX
+    # # # # Cargar el modelo entrenado
+    # # modelo = SAnD(in_feature, seq_len, n_heads, factor, num_class, num_layers)
+    modelo = SAnDImprove(in_feature, seq_len, n_heads, factor, num_class, num_layers)
+    # # # modelo_siamese = SiameseSAnD(SAnD_Embedding(in_feature, seq_len, n_heads, factor, num_class, num_layers))
+    # # # # Verificar los atributos de modelo_siamese
+    # # # # print(modelo_siamese)
+    # # # # # Verificar los atributos de modelo_normal
+    # # # # print(modelo_normal)
+    # # # # # Copiar pesos de la parte compartida del modelo siamesa al modelo normal
+    # # # # Transferir pesos del modelo siamesa al modelo normal
+    # # # modelo.encoder.load_state_dict(modelo_siamese.sand.encoder.state_dict())  # Transferir encoder
+    # # # modelo.dense_interpolation.load_state_dict(modelo_siamese.sand.dense_interpolation.state_dict())  # Transferir dense_interpolation
+    # # #
+    # # #
+    # # # print("Pesos transferidos correctamente.")
+    # # # print(modelo)
+    # # #
+    # # # # 2. Cargar el diccionario de estado correctamente
+    # # checkpoint = torch.load("save_params/trained_model_normal.pth", map_location="cpu")
+    checkpoint = torch.load("save_params/trained_model_normal_improve.pth", map_location="cpu")
+    # # # # checkpoint = torch.load("save_params/trained_model_siamese.pth", map_location="cpu")
+    modelo.load_state_dict(checkpoint["model_state_dict"])  # Extrae solo "model_state_dict"
+    # # # modelo.eval()
+    # # #
+    # # # # Crear un dummy input (ajusta el tamaño según tu entrada real)
+    # # #
+    input_shape = (400, 3)
+    dummy_input = torch.randn(1, *input_shape)
+    # # #
+    # # # # Exportar a ONNX
+    # # torch.onnx.export(modelo, dummy_input, "save_params/trained_model_normal.onnx", opset_version=13)
+    # # # torch.onnx.export(modelo, dummy_input, "save_params/trained_model_siamese.onnx", opset_version=13)
+    torch.onnx.export(modelo, dummy_input, "save_params/trained_model_normal_improve.onnx", opset_version=13)
+    # #
+    # # # #
+    #
+    # #
+# ##################################################################################################
+# # #Inferencia en PC
+# #############################################################################################
 #
-# # #training network Improve
-# clf.fit_normal_improve(x_train, y_train, x_val, y_val, x_test, y_test,
-#          {"train": train_loader,
-#       "val": val_loader,
-#       "test": test_loader},
-#       epochs=80
-# )
-# # # #
-# # # # # training network Siamese
-# # # # # clf.fit_siamese(x_train, y_train, x_val, y_val, x_test, y_test,
-# # # # #             {"train": train_loader,
-# # # # #         "val": val_loader,
-# # # # #         "test": test_loader},
-# # # # #         epochs=80
-# # # # # )
-# # # #
-# # # #
-# # # #
-# # # # #Inference SoH Siames ###############################
-# # # # #inference_model = Inference_SoH_Siamese("save_params/trained_model_siamese.pth", input_features=3, seq_len=400, n_heads=32, factor=32, n_class=1, n_layers=4)
-# # # # #soh_predictions = inference_model.predict(test_loader)
-# # # # #Inference SoH ###############################
-# # # #
-# # # # #Inference SoH Normal ###############################
-# # # # # inference_model = Inference_SoH_Normal("save_params/trained_model_normal.pth", input_features=3, seq_len=400, n_heads=32, factor=32, n_class=1, n_layers=4)
-# # # # # soh_predictions = inference_model.predict(test_loader)
-# # # # #Inference SoH ###############################
-# # # #
-# # # # # evaluating
-# # # # # clf.restore_from_file("save_params/trained model.pth", "cuda")
-# # # # # clf.evaluate(test_loader)
-# # # #
-# # # # save
-# # clf.save_to_file_normal("save_params/")
-# clf.save_to_file_normal_improve("save_params/")
-# # # #clf.save_to_file_siamese("save_params/")
-# # #
-# # #
-# # #
-# # #
-# # # # Conversión a ONNX
-# # # # Cargar el modelo entrenado
-# # modelo = SAnD(in_feature, seq_len, n_heads, factor, num_class, num_layers)
-# modelo = SAnDImprove(in_feature, seq_len, n_heads, factor, num_class, num_layers)
-# # # modelo_siamese = SiameseSAnD(SAnD_Embedding(in_feature, seq_len, n_heads, factor, num_class, num_layers))
-# # # # Verificar los atributos de modelo_siamese
-# # # # print(modelo_siamese)
-# # # # # Verificar los atributos de modelo_normal
-# # # # print(modelo_normal)
-# # # # # Copiar pesos de la parte compartida del modelo siamesa al modelo normal
-# # # # Transferir pesos del modelo siamesa al modelo normal
-# # # modelo.encoder.load_state_dict(modelo_siamese.sand.encoder.state_dict())  # Transferir encoder
-# # # modelo.dense_interpolation.load_state_dict(modelo_siamese.sand.dense_interpolation.state_dict())  # Transferir dense_interpolation
-# # #
-# # #
-# # # print("Pesos transferidos correctamente.")
-# # # print(modelo)
-# # #
-# # # # 2. Cargar el diccionario de estado correctamente
-# # checkpoint = torch.load("save_params/trained_model_normal.pth", map_location="cpu")
-# checkpoint = torch.load("save_params/trained_model_normal_improve.pth", map_location="cpu")
-# # # # checkpoint = torch.load("save_params/trained_model_siamese.pth", map_location="cpu")
-# modelo.load_state_dict(checkpoint["model_state_dict"])  # Extrae solo "model_state_dict"
-# # # modelo.eval()
-# # #
-# # # # Crear un dummy input (ajusta el tamaño según tu entrada real)
-# # #
-# input_shape = (400, 3)
-# dummy_input = torch.randn(1, *input_shape)
-# # #
-# # # # Exportar a ONNX
-# # torch.onnx.export(modelo, dummy_input, "save_params/trained_model_normal.onnx", opset_version=13)
-# # # torch.onnx.export(modelo, dummy_input, "save_params/trained_model_siamese.onnx", opset_version=13)
-# torch.onnx.export(modelo, dummy_input, "save_params/trained_model_normal_improve.onnx", opset_version=13)
-# #
-# # # #
-#
-# #
-##################################################################################################
-# #Inferencia en PC
-#############################################################################################
-
-def cargar_modelo(modo="onnx"):
+def cargar_modelo(modo="onnx", modelo = None):
     """Carga el modelo según el modo especificado."""
     if modo == "onnx":
         # session = ort.InferenceSession("save_params/trained_model_normal.onnx")
-        session = ort.InferenceSession("save_params/trained_model_normal_improve.onnx")
+        session = ort.InferenceSession(modelo)
         input_name = session.get_inputs()[0].name
         return session, input_name
     # elif modo == "pth":
@@ -328,7 +345,7 @@ def cargar_modelo(modo="onnx"):
     else:
         raise ValueError("Modo no reconocido. Usa 'onnx' o 'pth'.")
 
-def realizar_inferencia(x_test, y_test, test_loader, modo="onnx"):
+def realizar_inferencia(x_test, y_test, test_loader, modo="onnx", modelo=None):
     """Realiza la inferencia usando ONNX o PyTorch y calcula métricas."""
 
 
@@ -336,7 +353,7 @@ def realizar_inferencia(x_test, y_test, test_loader, modo="onnx"):
         predicciones = []
         etiquetas_reales = []
         mae_total, mse_sum, mape_total = 0, 0, 0
-        modelo, input_name = cargar_modelo(modo)
+        modelo, input_name = cargar_modelo(modo, modelo)
         for idx in range(len(x_test)):
             x_sample = x_test[idx].numpy().astype(np.float32)  # Convertir tensor a numpy
             x_sample = np.expand_dims(x_sample, axis=0)  # Añadir batch dimension
@@ -386,7 +403,7 @@ def realizar_inferencia(x_test, y_test, test_loader, modo="onnx"):
 
         #Inference SoH Normal ###############################
         # inference_model = Inference_SoH_Normal("save_params/trained_model_normal.pth", input_features=3, seq_len=400, n_heads=128, factor=32, n_class=1, n_layers=12)
-        inference_model = Inference_SoH_Normal_Improve("save_params/trained_model_normal_improve.pth", input_features=3, seq_len=400, n_heads=128, factor=32, n_class=1, n_layers=12)
+        inference_model = Inference_SoH_Normal_Improve(modelo, input_features=3, seq_len=400, n_heads=128, factor=32, n_class=1, n_layers=12)
         soh_predictions = inference_model.predict(test_loader)
         #Inference SoH ###############################
 
@@ -416,6 +433,9 @@ def realizar_inferencia(x_test, y_test, test_loader, modo="onnx"):
     print(f"MAPE: {mape}%")
 
 # 🔹 Ejemplo de uso
-modo = "onnx"  # Cambia a "pth" para usar el modelo original
-realizar_inferencia(x_test, y_test, test_loader, modo)
+if train ==  False:
+    modo = "pth"  # Cambia a "pth" para usar el modelo original
+    modelo ="save_params/trained_model_siamese.pth"
+    realizar_inferencia(x_val, y_val, val_loader, modo, modelo)
+
 
