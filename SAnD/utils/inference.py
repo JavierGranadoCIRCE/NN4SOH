@@ -13,17 +13,16 @@ from SAnD.core.model import SAnD, SAnD_Embedding, SiameseSAnD, SAnDImprove
 class Inference_SoH_Siamese:
     def __init__(self, model_path, input_features, seq_len, n_heads, factor, n_class, n_layers, device="cuda"):
         self.device = device
-        self.siamese_model = SiameseSAnD(SAnD_Embedding(input_features, seq_len, n_heads, factor, n_class, n_layers))
+        self.siamese_model = SAnD_Embedding(input_features, seq_len, n_heads, factor, n_class, n_layers)
         checkpoint = torch.load("save_params/trained_model_siamese.pth", map_location=device)
-        self.siamese_model.load_state_dict(checkpoint["model_state_dict"])
+        self.siamese_model.load_state_dict(checkpoint["model_state_dict"], strict=False)
         #self.siamese_model.load_state_dict(torch.load(model_path, map_location=device))
         self.siamese_model.to(device)
         self.siamese_model.eval()
-
-        self.sand_model = SAnD(input_features, seq_len, n_heads, factor, n_class, n_layers)
-        self.sand_model.encoder.load_state_dict(self.siamese_model.sand.encoder.state_dict())
-        self.sand_model.to(device)
-        self.sand_model.eval()
+        # self.sand_model = SAnD(input_features, seq_len, n_heads, factor, n_class, n_layers)
+        # self.siamese_model.encoder.load_state_dict(self.siamese_model.sand.encoder.state_dict())
+        self.siamese_model.to(device)
+        self.siamese_model.eval()
 
     def predict(self, test_loader):
         predictions = []
@@ -32,7 +31,7 @@ class Inference_SoH_Siamese:
             for x_test, y_test in test_loader:
                 x_test = x_test.clone().detach().to(self.device)
                 x_test = x_test.to(self.device)
-                soh_raw = self.sand_model(x_test)  # Obtener SoH
+                soh_raw = self.siamese_model(x_test)  # Obtener SoH
                 soh_pred = torch.sigmoid(soh_raw).cpu().numpy()
                 predictions.append(soh_pred)
                 soh_real.append(y_test.cpu().numpy())
@@ -43,7 +42,7 @@ class Inference_SoH_Siamese:
         soh_real = np.concatenate(soh_real).flatten()
 
         # Llamar a la función de visualización
-        self.plot_soh(soh_real, soh_pred)
+        # self.plot_soh(soh_real, soh_pred)
 
         # Convierte predicciones y valores reales en arrays
         y_true = np.array(soh_real)  # Etiquetas reales
@@ -59,6 +58,7 @@ class Inference_SoH_Siamese:
 
         # Si todo está bien, intenta calcular la correlación manualmente
         if np.var(y_pred) > 0 and np.var(y_true) > 0:
+            y_pred = y_pred[:len(y_true)]
             pearson_corr = np.corrcoef(y_true, y_pred)[0, 1]
             print(f"Correlación Pearson (recalculada): {pearson_corr}")
 

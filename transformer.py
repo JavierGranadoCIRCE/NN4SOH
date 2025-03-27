@@ -239,7 +239,7 @@ clf = NeuralNetworkClassifier(
 
 
 )
-train = False
+train = True
 if train ==  True:
     # # training network Normal
     # clf.fit_normal(x_train, y_train, x_val, y_val, x_test, y_test,
@@ -250,20 +250,20 @@ if train ==  True:
     #)
 
     # #training network Improve
-    clf.fit_normal_improve(x_train, y_train, x_val, y_val, x_test, y_test,
-             {"train": train_loader,
-          "val": val_loader,
-          "test": test_loader},
-          epochs=80
-    )
+    # clf.fit_normal_improve(x_train, y_train, x_val, y_val, x_test, y_test,
+    #          {"train": train_loader,
+    #       "val": val_loader,
+    #       "test": test_loader},
+    #       epochs=80
+    # )
     # # # #
-    # # # # # training network Siamese
-    # # # # # clf.fit_siamese(x_train, y_train, x_val, y_val, x_test, y_test,
-    # # # # #             {"train": train_loader,
-    # # # # #         "val": val_loader,
-    # # # # #         "test": test_loader},
-    # # # # #         epochs=80
-    # # # # # )
+    # training network Siamese
+    clf.fit_siamese(x_train, y_train, x_val, y_val, x_test, y_test,
+                {"train": train_loader,
+            "val": val_loader,
+            "test": test_loader},
+            epochs=1
+    )
     # # # #
     # # # #
     # # # #
@@ -283,35 +283,37 @@ if train ==  True:
     # # # #
     # # # # save
     # # clf.save_to_file_normal("save_params/")
-    clf.save_to_file_normal_improve("save_params/")
-    # # # #clf.save_to_file_siamese("save_params/")
-    # # #
+    # clf.save_to_file_normal_improve("save_params/")
+    clf.save_to_file_siamese("save_params/")
+    # #
     # # #
     # # #
     # # #
     # # # # Conversión a ONNX
     # # # # Cargar el modelo entrenado
-    # # modelo = SAnD(in_feature, seq_len, n_heads, factor, num_class, num_layers)
-    modelo = SAnDImprove(in_feature, seq_len, n_heads, factor, num_class, num_layers)
-    # # # modelo_siamese = SiameseSAnD(SAnD_Embedding(in_feature, seq_len, n_heads, factor, num_class, num_layers))
+    # modelo = SAnD(in_feature, seq_len, n_heads, factor, num_class, num_layers)
+    # modelo = SAnDImprove(in_feature, seq_len, n_heads, factor, num_class, num_layers)
+    siamese_model = SAnD_Embedding(in_feature, seq_len, n_heads, factor, num_class, num_layers)
     # # # # Verificar los atributos de modelo_siamese
-    # # # # print(modelo_siamese)
+    # print(modelo_siamese)
     # # # # # Verificar los atributos de modelo_normal
-    # # # # print(modelo_normal)
+    # print(modelo)
     # # # # # Copiar pesos de la parte compartida del modelo siamesa al modelo normal
     # # # # Transferir pesos del modelo siamesa al modelo normal
-    # # # modelo.encoder.load_state_dict(modelo_siamese.sand.encoder.state_dict())  # Transferir encoder
-    # # # modelo.dense_interpolation.load_state_dict(modelo_siamese.sand.dense_interpolation.state_dict())  # Transferir dense_interpolation
+    # modelo.encoder.load_state_dict(modelo_siamese.sand.encoder.state_dict(), strict=False)  # Transferir encoder
+    # modelo.dense_interpolation.load_state_dict(modelo_siamese.sand.dense_interpolation.state_dict(), strict=False)  # Transferir dense_interpolation
     # # #
     # # #
     # # # print("Pesos transferidos correctamente.")
     # # # print(modelo)
     # # #
     # # # # 2. Cargar el diccionario de estado correctamente
-    # # checkpoint = torch.load("save_params/trained_model_normal.pth", map_location="cpu")
-    checkpoint = torch.load("save_params/trained_model_normal_improve.pth", map_location="cpu")
-    # # # # checkpoint = torch.load("save_params/trained_model_siamese.pth", map_location="cpu")
-    modelo.load_state_dict(checkpoint["model_state_dict"])  # Extrae solo "model_state_dict"
+
+    # checkpoint = torch.load("save_params/trained_model_normal_old.pth", map_location="cpu")
+    # checkpoint = torch.load("save_params/trained_model_normal_improve.pth", map_location="cpu")
+    checkpoint = torch.load("save_params/trained_model_siamese.pth", map_location="cpu")
+    siamese_model.load_state_dict(checkpoint["model_state_dict"], strict=False)
+
     # # # modelo.eval()
     # # #
     # # # # Crear un dummy input (ajusta el tamaño según tu entrada real)
@@ -321,8 +323,8 @@ if train ==  True:
     # # #
     # # # # Exportar a ONNX
     # # torch.onnx.export(modelo, dummy_input, "save_params/trained_model_normal.onnx", opset_version=13)
-    # # # torch.onnx.export(modelo, dummy_input, "save_params/trained_model_siamese.onnx", opset_version=13)
-    torch.onnx.export(modelo, dummy_input, "save_params/trained_model_normal_improve.onnx", opset_version=13)
+    torch.onnx.export(siamese_model, dummy_input, "save_params/trained_model_siamese.onnx", opset_version=13)
+    # torch.onnx.export(model, dummy_input, "save_params/trained_model_normal_improve.onnx", opset_version=13)
     # #
     # # # #
     #
@@ -403,13 +405,14 @@ def realizar_inferencia(x_test, y_test, test_loader, modo="onnx", modelo=None):
 
         #Inference SoH Normal ###############################
         # inference_model = Inference_SoH_Normal("save_params/trained_model_normal.pth", input_features=3, seq_len=400, n_heads=128, factor=32, n_class=1, n_layers=12)
-        inference_model = Inference_SoH_Normal_Improve(modelo, input_features=3, seq_len=400, n_heads=128, factor=32, n_class=1, n_layers=12)
+        # inference_model = Inference_SoH_Normal_Improve(modelo, input_features=3, seq_len=400, n_heads=128, factor=32, n_class=1, n_layers=12)
+        inference_model = Inference_SoH_Siamese(modelo, input_features=3, seq_len=400, n_heads=32, factor=32, n_class=1, n_layers=4)
         soh_predictions = inference_model.predict(test_loader)
         #Inference SoH ###############################
 
         # real = soh_predictions[1]
         for idx in range(len(x_test)):
-            pred = soh_predictions[0][idx]
+            pred = soh_predictions[idx]
             real = y_test[idx].item()
             # Cálculo de errores
             mae_total += np.abs(pred - real)
@@ -434,8 +437,8 @@ def realizar_inferencia(x_test, y_test, test_loader, modo="onnx", modelo=None):
 
 # 🔹 Ejemplo de uso
 if train ==  False:
-    modo = "pth"  # Cambia a "pth" para usar el modelo original
-    modelo ="save_params/trained_model_siamese.pth"
+    modo = "onnx"  # Cambia a "pth" para usar el modelo original
+    modelo ="save_params/trained_model_siamese.onnx"
     realizar_inferencia(x_val, y_val, val_loader, modo, modelo)
 
 
