@@ -248,13 +248,13 @@ clf = NeuralNetworkClassifier(
 
 
 )
-inference = True
+inference = False
 train = False
-export_csv = False
+export_csv = True
 
 if export_csv == True:
 
-    save_example_to_csv(x_train, y_train, 51, filename="save_params/ciclo_de_carga.csv")
+    save_example_to_csv(x_val, y_val, 715, filename="save_params/ciclo_de_carga.csv")
 
 if train ==  True:
     # # training network Normal
@@ -308,8 +308,8 @@ if train ==  True:
     # # # # Conversión a ONNX
     # # # # Cargar el modelo entrenado
     # modelo = SAnD(in_feature, seq_len, n_heads, factor, num_class, num_layers)
-    modelo = SAnDImprove(in_feature, seq_len, n_heads, factor, num_class, num_layers)
-    #siamese_model = SAnD_Embedding(in_feature, seq_len, n_heads, factor, num_class, num_layers)
+    # modelo = SAnDImprove(in_feature, seq_len, n_heads, factor, num_class, num_layers)
+    modelo = SAnD_Embedding(in_feature, seq_len, n_heads, factor, num_class, num_layers)
     # # # # Verificar los atributos de modelo_siamese
     # print(modelo_siamese)
     # # # # # Verificar los atributos de modelo_normal
@@ -325,12 +325,12 @@ if train ==  True:
     # # #
     # # # # 2. Cargar el diccionario de estado correctamente
 
-    checkpoint = torch.load("save_params/trained_model_normal_old.pth", map_location="cpu")
+    # checkpoint = torch.load("save_params/trained_model_normal_old.pth", map_location="cpu")
     # print(checkpoint.keys())  # Ver qué hay dentro
     # if "hyperparameters" in checkpoint:  # Si guardaste los hiperparámetros
     #     print(checkpoint["hyperparameters"])
     # checkpoint = torch.load("save_params/trained_model_normal_improve_old.pth", map_location="cpu")
-    #checkpoint = torch.load("save_params/trained_model_siamese.pth", map_location="cpu")
+    checkpoint = torch.load("save_params/trained_model_siamese_old.pth", map_location="cpu")
     modelo.load_state_dict(checkpoint["model_state_dict"], strict=False)
     modelo.eval()
     # #
@@ -340,8 +340,8 @@ if train ==  True:
     dummy_input = torch.randn(1, *input_shape)
     # # #
     # # # # Exportar a ONNX
-    torch.onnx.export(modelo, dummy_input, "save_params/trained_model_normal_old.onnx", opset_version=13)
-    #torch.onnx.export(siamese_model, dummy_input, "save_params/trained_model_siamese.onnx", opset_version=13)
+    # torch.onnx.export(modelo, dummy_input, "save_params/trained_model_normal_old.onnx", opset_version=13)
+    torch.onnx.export(modelo, dummy_input, "save_params/trained_model_siamese_old.onnx", opset_version=13)
     # torch.onnx.export(modelo, dummy_input, "save_params/trained_model_normal_improve_old.onnx", opset_version=13)
     # #
     # # # #
@@ -423,8 +423,8 @@ def realizar_inferencia(x_test, y_test, test_loader, modo="onnx", modelo=None):
 
         #Inference SoH Normal ###############################
         # inference_model = Inference_SoH_Normal("save_params/trained_model_normal.pth", input_features=3, seq_len=400, n_heads=128, factor=32, n_class=1, n_layers=12)
-        inference_model = Inference_SoH_Normal_Improve(modelo, input_features=3, seq_len=400, n_heads=128, factor=32, n_class=1, n_layers=12)
-        # inference_model = Inference_SoH_Siamese(modelo, input_features=3, seq_len=400, n_heads=32, factor=32, n_class=1, n_layers=4)
+        # inference_model = Inference_SoH_Normal_Improve(modelo, input_features=3, seq_len=400, n_heads=128, factor=32, n_class=1, n_layers=12)
+        inference_model = Inference_SoH_Siamese(modelo, input_features=3, seq_len=400, n_heads=32, factor=32, n_class=1, n_layers=4)
         soh_predictions = inference_model.predict(test_loader)
         #Inference SoH ###############################
 
@@ -455,8 +455,8 @@ def realizar_inferencia(x_test, y_test, test_loader, modo="onnx", modelo=None):
 
 # 🔹 Ejemplo de uso
 if inference ==  True:
-    modo = "pth"  # Cambia a "pth" para usar el modelo original
-    modelo ="save_params/trained_model_normal_improve.pth"
+    modo = "onnx"  # Cambia a "pth" para usar el modelo original
+    modelo ="save_params/trained_model_siamese_old.onnx"
     realizar_inferencia(x_val, y_val, val_loader, modo, modelo)
 
 
