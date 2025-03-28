@@ -1,6 +1,8 @@
 import torch
 import numpy as np
 import random
+import numpy as np
+import pandas as pd
 from torch.utils.data import DataLoader
 from typing import Dict
 
@@ -91,6 +93,43 @@ def generar_pares_aleatorios(x_train, y_train, umbral_soh=0.02):
     if x2.dim() == 2:  # Si x2 tiene la forma (400, 3)
         x2 = x2.unsqueeze(0)  # Convierte en (1, 400, 3)
     return x1, x2, y_cont
+
+
+def save_example_to_csv(x_train, y_train, example_idx, filename="ciclo_de_carga.csv"):
+    """
+    Guarda un ejemplo de x_train con su correspondiente etiqueta de y_train en un archivo CSV.
+
+    Parámetros:
+    - x_train: Tensor de entrada con forma (N, 400, 3).
+    - y_train: Tensor de etiquetas con forma (N,).
+    - example_idx: Índice del ejemplo a guardar.
+    - filename: Nombre del archivo CSV de salida (por defecto "example_data_with_label.csv").
+    """
+
+    # Verificar que el índice es válido
+    if example_idx < 0 or example_idx >= len(x_train):
+        raise ValueError(f"Índice fuera de rango: {example_idx}. Debe estar entre 0 y {len(x_train) - 1}.")
+
+    # Aplanar el tensor del ejemplo para convertirlo en un vector 1D de longitud 1200
+    example_data = x_train[example_idx].reshape(-1)  # De [400, 3] a [1200]
+
+    # Tomar la etiqueta correspondiente
+    example_label = y_train[example_idx]
+
+    # Combinar los datos de entrada con la etiqueta
+    data_with_label = np.append(example_data, example_label)  # Unir características y etiqueta
+
+    # Convertir a un DataFrame de pandas
+    df = pd.DataFrame(data_with_label.reshape(1, -1))
+
+    # Guardar en un archivo CSV sin encabezados ni índice
+    df.to_csv(filename, header=False, index=False)
+
+    print(f"Ejemplo {example_idx} guardado en {filename}")
+
+# Ejemplo de uso:
+# save_example_to_csv(x_train, y_train, 0, "output_example.csv")
+
 
 
 

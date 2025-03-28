@@ -822,6 +822,7 @@ class NeuralNetworkClassifier:
 
         checkpoints = self.save_checkpoint_n_improve()
 
+        # torch.save(checkpoints, path,{"hyperparameters": hyperparameters})
         torch.save(checkpoints, path)
         self.experiment.log_asset(path, file_name=file_name)
 
