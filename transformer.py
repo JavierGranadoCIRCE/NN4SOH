@@ -124,16 +124,27 @@ labels=torch.from_numpy(np.array(labels)).type(torch.FloatTensor)
 
 # Escalar etiquetas
 label_scaler = MinMaxScaler()
-labels = label_scaler.fit_transform(np.array(labels).reshape(-1, 1)).flatten()
+# labels = label_scaler.fit_transform(np.array(labels).reshape(-1, 1)).flatten()
+labels = label_scaler.fit_transform(np.asarray(labels).reshape(-1, 1)).flatten()
+
 
 # Dividir en train, val y test (estratificado si `labels` tiene clases desbalanceadas)
 x_train, x_temp, y_train, y_temp = train_test_split(data, labels, test_size=0.2, random_state=42)
 x_val, x_test, y_val, y_test = train_test_split(x_temp, y_temp, test_size=0.5, random_state=42)
 
 # Convertir a tensores
-x_train = torch.tensor(x_train, dtype=torch.float32)
-x_val = torch.tensor(x_val, dtype=torch.float32)
-x_test = torch.tensor(x_test, dtype=torch.float32)
+# x_train = torch.tensor(x_train, dtype=torch.float32)
+# x_val = torch.tensor(x_val, dtype=torch.float32)
+# x_test = torch.tensor(x_test, dtype=torch.float32)
+
+x_train = x_train.clone().detach().float()
+x_val = x_val.clone().detach().float()
+x_test = x_test.clone().detach().float()
+
+# y_train = y_train.clone().detach().float()
+# y_val = y_val.clone().detach().float()
+# y_test = y_test.clone().detach().float()
+
 
 y_train = torch.tensor(y_train, dtype=torch.float32)
 y_val = torch.tensor(y_val, dtype=torch.float32)
@@ -240,7 +251,7 @@ clf = NeuralNetworkClassifier(
     #nn.MSELoss(),
     nn.SmoothL1Loss(beta=0.1),  # Cambiar a SmoothL1Loss,
     #optim.AdamW,optimizer_config={"lr": 1e-4, "betas": (0.9, 0.98), "eps": 4e-09, "weight_decay": 5e-4},
-    optim.AdamW,optimizer_config={"lr": 1e-5, "betas": (0.9, 0.98), "eps": 1e-09, "weight_decay": 5e-4},
+    optim.AdamW,optimizer_config={"lr": 1e-4, "betas": (0.9, 0.98), "eps": 1e-09, "weight_decay": 5e-4},
     #experiment=Experiment("8mKGHiYeg2P7dZEFlvQv3PEzc")
     experiment = Experiment(api_key="Td3ICbNoK8hW14nwxZfp10SGN",
                             project_name="nn4soh",
@@ -248,9 +259,9 @@ clf = NeuralNetworkClassifier(
 
 
 )
-inference = False
+inference = True
 train = False
-export_csv = True
+export_csv = False
 
 if export_csv == True:
 
@@ -258,12 +269,12 @@ if export_csv == True:
 
 if train ==  True:
     # # training network Normal
-    # clf.fit_normal(x_train, y_train, x_val, y_val, x_test, y_test,
-    #         {"train": train_loader,
-    #       "val": val_loader,
-    #       "test": test_loader},
-    #       epochs=80
-    #)
+    clf.fit_normal(x_train, y_train, x_val, y_val, x_test, y_test,
+            {"train": train_loader,
+          "val": val_loader,
+          "test": test_loader},
+          epochs=8
+    )
 
     # #training network Improve
     # clf.fit_normal_improve(x_train, y_train, x_val, y_val, x_test, y_test,
@@ -298,7 +309,7 @@ if train ==  True:
     # # # # # clf.evaluate(test_loader)
     # # # #
     # # # # save
-    # # clf.save_to_file_normal("save_params/")
+    clf.save_to_file_normal("save_params/")
     # clf.save_to_file_normal_improve("save_params/")
     #clf.save_to_file_siamese("save_params/")
     # #
@@ -307,9 +318,18 @@ if train ==  True:
     # # #
     # # # # Conversión a ONNX
     # # # # Cargar el modelo entrenado
-    # modelo = SAnD(in_feature, seq_len, n_heads, factor, num_class, num_layers)
+    class WrappedModel(nn.Module):
+        def __init__(self, model):
+            super(WrappedModel, self).__init__()
+            self.model = model
+            self.sigmoid = nn.Sigmoid()  # Agregar sigmoide
+
+        def forward(self, x):
+            return self.sigmoid(self.model(x))  # Aplicar sigmoide después del modelo
+
+    modelo = SAnD(in_feature, seq_len, n_heads, factor, num_class, num_layers)
     # modelo = SAnDImprove(in_feature, seq_len, n_heads, factor, num_class, num_layers)
-    modelo = SAnD_Embedding(in_feature, seq_len, n_heads, factor, num_class, num_layers)
+    # modelo = SAnD_Embedding(in_feature, seq_len, n_heads, factor, num_class, num_layers)
     # # # # Verificar los atributos de modelo_siamese
     # print(modelo_siamese)
     # # # # # Verificar los atributos de modelo_normal
@@ -330,9 +350,10 @@ if train ==  True:
     # if "hyperparameters" in checkpoint:  # Si guardaste los hiperparámetros
     #     print(checkpoint["hyperparameters"])
     # checkpoint = torch.load("save_params/trained_model_normal_improve_old.pth", map_location="cpu")
-    checkpoint = torch.load("save_params/trained_model_siamese_old.pth", map_location="cpu")
+    checkpoint = torch.load("save_params/trained_model_normal.pth", map_location="cpu")
     modelo.load_state_dict(checkpoint["model_state_dict"], strict=False)
     modelo.eval()
+    wrapped_model = WrappedModel(modelo)  # Envolver modelo con sigmoide
     # #
     # # # # Crear un dummy input (ajusta el tamaño según tu entrada real)
     # # #
@@ -341,7 +362,7 @@ if train ==  True:
     # # #
     # # # # Exportar a ONNX
     # torch.onnx.export(modelo, dummy_input, "save_params/trained_model_normal_old.onnx", opset_version=13)
-    torch.onnx.export(modelo, dummy_input, "save_params/trained_model_siamese_old.onnx", opset_version=13)
+    torch.onnx.export(wrapped_model, dummy_input, "save_params/trained_model_normal.onnx", opset_version=13)
     # torch.onnx.export(modelo, dummy_input, "save_params/trained_model_normal_improve_old.onnx", opset_version=13)
     # #
     # # # #
@@ -422,15 +443,15 @@ def realizar_inferencia(x_test, y_test, test_loader, modo="onnx", modelo=None):
         #         etiquetas_reales.append(real)
 
         #Inference SoH Normal ###############################
-        # inference_model = Inference_SoH_Normal("save_params/trained_model_normal.pth", input_features=3, seq_len=400, n_heads=128, factor=32, n_class=1, n_layers=12)
+        inference_model = Inference_SoH_Normal("save_params/trained_model_normal.pth", input_features=3, seq_len=400, n_heads=32, factor=32, n_class=1, n_layers=4)
         # inference_model = Inference_SoH_Normal_Improve(modelo, input_features=3, seq_len=400, n_heads=128, factor=32, n_class=1, n_layers=12)
-        inference_model = Inference_SoH_Siamese(modelo, input_features=3, seq_len=400, n_heads=32, factor=32, n_class=1, n_layers=4)
+        # inference_model = Inference_SoH_Siamese(modelo, input_features=3, seq_len=400, n_heads=32, factor=32, n_class=1, n_layers=4)
         soh_predictions = inference_model.predict(test_loader)
         #Inference SoH ###############################
 
         # real = soh_predictions[1]
         for idx in range(len(x_test)):
-            pred = soh_predictions[idx]
+            pred = soh_predictions[0][idx]
             real = y_test[idx].item()
             # Cálculo de errores
             mae_total += np.abs(pred - real)
@@ -456,7 +477,7 @@ def realizar_inferencia(x_test, y_test, test_loader, modo="onnx", modelo=None):
 # 🔹 Ejemplo de uso
 if inference ==  True:
     modo = "onnx"  # Cambia a "pth" para usar el modelo original
-    modelo ="save_params/trained_model_siamese_old.onnx"
+    modelo ="save_params/trained_model_normal.onnx"
     realizar_inferencia(x_val, y_val, val_loader, modo, modelo)
 
 
