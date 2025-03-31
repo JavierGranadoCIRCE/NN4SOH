@@ -510,6 +510,7 @@ class NeuralNetworkClassifier:
                     train_output = self.model_ni(x_train)
                     train_loss = self.criterion_ni(train_output, y_train)
                     train_loss.backward()
+                    torch.nn.utils.clip_grad_norm_(self.model_ni.parameters(), max_norm=1.0)
                     self.optimizer_ni.step()
                     # _, train_pred = torch.max(train_output, 1)
                     # #val_correct += (val_pred == y_val).sum().float().item()
@@ -519,7 +520,9 @@ class NeuralNetworkClassifier:
                     train_pred = train_output
 
                     # Comparar las predicciones con las etiquetas reales usando una métrica de error
-                    train_loss = torch.nn.functional.mse_loss(train_pred, y_train.to(self.device))
+                    #train_loss = torch.nn.functional.mse_loss(train_pred, y_train.to(self.device))
+                    train_loss = torch.nn.functional.mse_loss(train_pred, y_train.unsqueeze(1).to(self.device))
+
 
                     # Si quieres llevar un conteo de cuántas predicciones están cerca del valor real (por ejemplo, dentro de un umbral)
                     threshold = 0.1  # Definir un umbral de tolerancia para considerarlo "correcto"
