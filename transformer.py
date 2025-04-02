@@ -76,17 +76,42 @@ for i in range(len(raw)):
                 labels.append(raw[i+1][3][0][0][6][0])
             elif i+2 != len(raw) and raw[i+2][0] == ['discharge']:
                 labels.append(raw[i+2][3][0][0][6][0])
+cycles.pop()
 assert (len(cycles) == len(labels)), 'Number of measurements not matched!'
 
+print(f"cantidad de ciclos: {len(cycles)}")
+print(f"cantidad de labels: {len(labels)}")
+
 data = []
-# calculate SOHs
+
+# Filtrar solo los ciclos y etiquetas que no estén vacíos
+filtered_cycles = []
+filtered_labels = []
+
+for i in range(len(labels)):
+    if len(labels[i]) > 0:  # Solo conservar si la etiqueta no está vacía
+        filtered_cycles.append(cycles[i])
+        filtered_labels.append(labels[i])
+
+# Sustituimos las listas originales por las filtradas
+cycles = filtered_cycles
+labels = filtered_labels
+
+print(f"Nueva cantidad de ciclos: {len(cycles)}")
+print(f"Nueva cantidad de labels: {len(labels)}")
 for lb in range(len(labels)):
-    #print(f"label {lb} de un total de {len(labels)}")
-    if (1974 < lb < 1979) or (2006 < lb < 2027):
-        labels[lb] = labels[lb+20][0] / 1.856487420818157  # TODO: first (largest) capacity found, but probably not the full cp
-    else:
-        labels[lb] = labels[lb][0] / 1.856487420818157  # TODO: first (largest) capacity found, but probably not the full cp
+    labels[lb] = labels[lb][0] / 1.856487420818157  # TODO: first (largest) capacity found, but probably not the full cp
+# calculate SOHs
+# for lb in range(len(labels)):
+#     #print(f"label {lb} de un total de {len(labels)}")
+#     if (1974 < lb < 1979) or (2006 < lb < 2027):
+#         labels[lb] = labels[lb+20][0] / 1.856487420818157  # TODO: first (largest) capacity found, but probably not the full cp
+#     else:
+#         lb =2106
+#         labels[lb] = labels[lb][0] / 1.856487420818157  # TODO: first (largest) capacity found, but probably not the full cp
+#         #print(f"⚠️ Error en lb={lb}: labels[{lb}] está vacío.")
 labels = labels * 3
+
 
 for t0 in [0, 1.5, 3]:
     for cy in cycles:
@@ -159,9 +184,9 @@ train_ds = TensorDataset(x_train, y_train)
 val_ds = TensorDataset(x_val, y_val)
 test_ds = TensorDataset(x_test, y_test)
 
-train_loader = DataLoader(train_ds, batch_size=64, shuffle=True)
-val_loader = DataLoader(val_ds, batch_size=64, shuffle=False)
-test_loader = DataLoader(test_ds, batch_size=64, shuffle=False)
+train_loader = DataLoader(train_ds, batch_size=16, shuffle=True)
+val_loader = DataLoader(val_ds, batch_size=16, shuffle=False)
+test_loader = DataLoader(test_ds, batch_size=16, shuffle=False)
 
 
 # plt.hist(y_train, bins=20, edgecolor='black', alpha=0.7)
@@ -228,10 +253,10 @@ test_loader = DataLoader(test_ds, batch_size=64, shuffle=False)
 ###############################################################################################################
 in_feature = 3
 seq_len = 400
-n_heads = 32
-factor = 32
+n_heads = 1
+factor = 1
 num_class = 1
-num_layers = 12
+num_layers = 8
 
 hyperparameters = {
     "in_feature": in_feature,
@@ -249,11 +274,11 @@ clf = NeuralNetworkClassifier(
     SAnDImprove(in_feature, seq_len, n_heads, factor, num_class, num_layers),
     ContrastiveLoss(),
     nn.MSELoss(),
-    #nn.MSELoss(),
-    nn.SmoothL1Loss(beta=0.1),  # Cambiar a SmoothL1Loss,
-    #optim.AdamW,optimizer_config={"lr": 1e-4, "betas": (0.9, 0.98), "eps": 4e-09, "weight_decay": 5e-4},
-    #optim.AdamW,optimizer_config={"lr": 1e-4, "betas": (0.9, 0.99), "eps": 1e-08, "weight_decay": 1e-4},
-    optim.SGD, optimizer_config={"lr":1e-6, "momentum": 0.9,"weight_decay": 1e-4},
+    nn.MSELoss(),
+    #nn.SmoothL1Loss(beta=0.1),  # Cambiar a SmoothL1Loss,
+    # optim.AdamW,optimizer_config={"lr": 1e-6, "betas": (0.9, 0.98), "eps": 4e-09, "weight_decay": 5e-4},
+    optim.AdamW,optimizer_config={"lr": 1e-6, "betas": (0.9, 0.91), "eps": 1e-08, "weight_decay": 1e-6},
+    # optim.SGD, optimizer_config={"lr":1e-6, "momentum": 0.9,"weight_decay": 1e-4},
     #experiment=Experiment("8mKGHiYeg2P7dZEFlvQv3PEzc")
     experiment = Experiment(api_key="Td3ICbNoK8hW14nwxZfp10SGN",
                             project_name="nn4soh",
@@ -261,13 +286,16 @@ clf = NeuralNetworkClassifier(
 
 
 )
-inference = False
-train = True
-export_csv = False
+inference = True
+if inference == True:
+    train = False
+elif inference == False:
+    train = True
+export_csv = True
 
-if export_csv == True:
+if export_csv == False:
 
-    save_example_to_csv(x_val, y_val, 715, filename="save_params/ciclo_de_carga.csv")
+    save_example_to_csv(x_val, y_val, 100, filename="save_params/ciclo_de_carga.csv")
 
 if train ==  True:
     # # training network Normal
@@ -363,7 +391,7 @@ if train ==  True:
     dummy_input = torch.randn(1, *input_shape)
     # # #
     # # # # Exportar a ONNX
-    # torch.onnx.export(modelo, dummy_input, "save_params/trained_model_normal_old.onnx", opset_version=13)
+    # torch.onnx.export(modelo, dummy_input, "save_params/trained_model_normal.onnx", opset_version=13)
     torch.onnx.export(wrapped_model, dummy_input, "save_params/trained_model_normal_improve.onnx", opset_version=13)
     # torch.onnx.export(modelo, dummy_input, "save_params/trained_model_normal_improve_old.onnx", opset_version=13)
     # #
@@ -427,7 +455,7 @@ def realizar_inferencia(x_test, y_test, test_loader, modo="onnx", modelo=None):
     if modo == "pth":
         predicciones = []
         etiquetas_reales = []
-        mae_total, mse_sum, mape_total = 0, 0, 0
+        mae_total, mse_sum, mape_total, smap_total = 0, 0, 0, 0
         # sand_model = SAnD(in_feature, seq_len, n_heads, factor, num_class, num_layers)
         # # Cargar los pesos del modelo entrenado
         # checkpoint = torch.load("save_params/trained_model_normal.pth", map_location=device)
@@ -446,7 +474,7 @@ def realizar_inferencia(x_test, y_test, test_loader, modo="onnx", modelo=None):
 
         #Inference SoH Normal ###############################
         # inference_model = Inference_SoH_Normal("save_params/trained_model_normal.pth", input_features=3, seq_len=400, n_heads=32, factor=32, n_class=1, n_layers=4)
-        inference_model = Inference_SoH_Normal_Improve(modelo, input_features=3, seq_len=400, n_heads=32, factor=32, n_class=1, n_layers=12)
+        inference_model = Inference_SoH_Normal_Improve(modelo, input_features=3, seq_len=400, n_heads=1, factor=1, n_class=1, n_layers=8)
         # inference_model = Inference_SoH_Siamese(modelo, input_features=3, seq_len=400, n_heads=32, factor=32, n_class=1, n_layers=4)
         soh_predictions = inference_model.predict(test_loader)
         #Inference SoH ###############################
@@ -454,12 +482,15 @@ def realizar_inferencia(x_test, y_test, test_loader, modo="onnx", modelo=None):
         # real = soh_predictions[1]
         for idx in range(len(x_test)):
             pred = soh_predictions[0][idx]
-            real = y_test[idx].item()
+            real = soh_predictions[1][idx]
             # Cálculo de errores
-            mae_total += np.abs(pred - real)
-            mse_sum += (pred - real) ** 2
+            mae_total += np.abs(real - pred)
+            mse_sum += (real - pred) ** 2
             if real != 0:
                 mape_total += np.abs((pred - real) / real)
+            smap_sup = pred - real
+            smap_inf = (np.abs(pred) + np.abs(real)) / 2
+            smap_total += np.abs (smap_sup / smap_inf)
 
             # Mostrar resultado parcial
             print(f"Ejemplo {idx + 1}/{len(x_test)} -> Predicción: {pred}, Etiqueta Real: {real}")
@@ -468,18 +499,23 @@ def realizar_inferencia(x_test, y_test, test_loader, modo="onnx", modelo=None):
     mae = mae_total / len(x_test)
     mse = mse_sum / len(x_test)
     rmse = np.sqrt(mse)
-    mape = (mape_total / len(x_test)) * 100
+    smape = smap_total / len(x_test)
+    # Calcula el MAPE promedio
+    mape = mape_total / len(x_test)
+    #  Multiplica por 100 para tener el resultado en porcentaje
+    # mape_total*= 100
+    #mape = (mape_total / len(x_test)) * 100
 
     print("\nMétricas finales:")
     print(f"MAE: {mae}")
     print(f"MSE: {mse}")
     print(f"RMSE: {rmse}")
-    print(f"MAPE: {mape}%")
+    print(f"SMAPE: {smape}")
 
 # 🔹 Ejemplo de uso
 if inference ==  True:
-    modo = "onnx"  # Cambia a "pth" para usar el modelo original
-    modelo ="save_params/trained_model_normal_improve.onnx"
+    modo = "pth"  # Cambia a "pth" para usar el modelo original
+    modelo ="save_params/trained_model_normal_improve.pth"
     realizar_inferencia(x_test, y_test, test_loader, modo, modelo)
 
 

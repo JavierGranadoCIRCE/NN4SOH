@@ -526,11 +526,12 @@ class NeuralNetworkClassifier:
 
                     # Si quieres llevar un conteo de cuántas predicciones están cerca del valor real (por ejemplo, dentro de un umbral)
                     threshold = 0.1  # Definir un umbral de tolerancia para considerarlo "correcto"
-                    train_correct += ((train_pred - y_train.to(self.device)).abs() < threshold).sum().float().item()
+                    correct_preds = ((train_pred - y_train.to(self.device)).abs() < threshold).sum().float().item()
+                    train_correct += correct_preds
 
 
                     self.experiment.log_metric("loss", train_loss.item(), step=epoch)
-                    self.experiment.log_metric("accuracy", float(train_correct / total_samples), step=epoch)
+                    self.experiment.log_metric("accuracy", float(train_correct / len(x_train)), step=epoch)
 
                     # Actualizar métricas
                     total_loss += train_loss.item()

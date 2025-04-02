@@ -100,6 +100,7 @@ class Inference_SoH_Siamese:
         # ##########################################################################
 
 
+
 class Inference_SoH_Normal:
     def __init__(self, model_path, input_features, seq_len, n_heads, factor, n_class, n_layers, device="cuda"):
         self.device = device
