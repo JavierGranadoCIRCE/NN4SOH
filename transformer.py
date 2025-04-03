@@ -92,6 +92,10 @@ for i in range(len(labels)):
     if len(labels[i]) > 0:  # Solo conservar si la etiqueta no está vacía
         filtered_cycles.append(cycles[i])
         filtered_labels.append(labels[i])
+for i in range(len(labels)):
+    if labels[i] > 0.5:  # Solo conservar si la etiqueta es mayor de 0.5
+        filtered_cycles.append(cycles[i])
+        filtered_labels.append(labels[i])
 
 # Sustituimos las listas originales por las filtradas
 cycles = filtered_cycles
@@ -111,10 +115,12 @@ for lb in range(len(labels)):
 #         labels[lb] = labels[lb][0] / 1.856487420818157  # TODO: first (largest) capacity found, but probably not the full cp
 #         #print(f"⚠️ Error en lb={lb}: labels[{lb}] está vacío.")
 # # print(f"Len data: {len(data)}, Len labels: {len(labels)}")  # Comprobar si siguen coincidiendo
-labels = labels * 10
+labels = labels * 20
+# labels = labels * 1
 # # print(f"Len data: {len(data)}, Len labels: {len(labels)}")  # Comprobar si siguen coincidiendo
 #
-for t0 in [0, 1.5, 3, 4.5, 6, 7.5, 9, 10.5, 12, 12.5]:
+for t0 in [0, 1.5, 3, 4.5, 6, 7.5, 9, 10.5, 12, 13.5, 15, 16.5, 18, 19.5, 21, 22.5, 24, 25.5, 27, 28.5]:
+# for t0 in [0]:
     for cy in cycles:
         t0 = 0
         t = t0
@@ -291,7 +297,7 @@ clf = NeuralNetworkClassifier(
 
 
 )
-inference = True
+inference = False
 if inference == True:
     train = False
 elif inference == False:
@@ -480,7 +486,7 @@ def realizar_inferencia(x_test, y_test, test_loader, modo="onnx", modelo=None):
 
         #Inference SoH Normal ###############################
         # inference_model = Inference_SoH_Normal("save_params/trained_model_normal.pth", input_features=3, seq_len=400, n_heads=32, factor=32, n_class=1, n_layers=4)
-        inference_model = Inference_SoH_Normal_Improve(modelo, input_features=3, seq_len=400, n_heads=4, factor=2, n_class=1, n_layers=8)
+        inference_model = Inference_SoH_Normal_Improve(modelo, input_features=3, seq_len=400, n_heads=1, factor=1, n_class=1, n_layers=8)
         # inference_model = Inference_SoH_Siamese(modelo, input_features=3, seq_len=400, n_heads=32, factor=32, n_class=1, n_layers=4)
         soh_predictions = inference_model.predict(test_loader)
         #Inference SoH ###############################
