@@ -42,7 +42,7 @@ from sklearn.preprocessing import MinMaxScaler
 from sklearn.model_selection import train_test_split
 import torch
 from torch.utils.data import TensorDataset, DataLoader
-######################################## Nueva rama normal_improve 12/03/2025
+######################################## Introducimos la rama de NARX
 
 
 # Real Dataset Generator
