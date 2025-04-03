@@ -511,10 +511,11 @@ def realizar_inferencia(x_test, y_test, test_loader, modo="onnx", modelo=None):
 
         # Graficar los valores reales y predichos
         plt.figure(figsize=(10, 5))
-        plt.plot(real_values, label="Real", color="blue", linestyle="-")
-        plt.plot(pred_values, label="Predicho", color="red", linestyle="-")
+        plt.scatter(range(len(real_values[:100])), real_values[:100], label="Real", color="blue", marker="o")
+        plt.scatter(range(len(pred_values[:100])), pred_values[:100], label="Predicho", color="red", marker="x")
 
-        # Etiquetas y título
+
+# Etiquetas y título
         plt.xlabel("Índice de muestra")
         plt.ylabel("State of Health (SoH)")
         plt.title("Comparación de SoH Real vs Predicho")
