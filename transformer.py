@@ -110,11 +110,13 @@ for lb in range(len(labels)):
 #         lb =2106
 #         labels[lb] = labels[lb][0] / 1.856487420818157  # TODO: first (largest) capacity found, but probably not the full cp
 #         #print(f"⚠️ Error en lb={lb}: labels[{lb}] está vacío.")
-labels = labels * 3
-
-
-for t0 in [0, 1.5, 3]:
+# # print(f"Len data: {len(data)}, Len labels: {len(labels)}")  # Comprobar si siguen coincidiendo
+labels = labels * 10
+# # print(f"Len data: {len(data)}, Len labels: {len(labels)}")  # Comprobar si siguen coincidiendo
+#
+for t0 in [0, 1.5, 3, 4.5, 6, 7.5, 9, 10.5, 12, 12.5]:
     for cy in cycles:
+        t0 = 0
         t = t0
         t_limit = 4000 + t0  # TODO: this parameter can be further tuned
         cursor = 0
@@ -134,10 +136,13 @@ for t0 in [0, 1.5, 3]:
             cursor -= 1
             t += 10
         data.append(cy_new)
+    #         # print(f"En iteración {t0}, tamaño actual de data: {len(data)}")
 
+print(f"Final Len data: {len(data)}, Len labels: {len(labels)}")
 
 # Data shape: (495, 401, 3)
 # Labels shape: (495)
+# data = cycles
 for i in range(len(data)):
     mm = MinMaxScaler()
     data[i] = mm.fit_transform(data[i])
@@ -184,9 +189,9 @@ train_ds = TensorDataset(x_train, y_train)
 val_ds = TensorDataset(x_val, y_val)
 test_ds = TensorDataset(x_test, y_test)
 
-train_loader = DataLoader(train_ds, batch_size=16, shuffle=True)
-val_loader = DataLoader(val_ds, batch_size=16, shuffle=False)
-test_loader = DataLoader(test_ds, batch_size=16, shuffle=False)
+train_loader = DataLoader(train_ds, batch_size=128, shuffle=True)
+val_loader = DataLoader(val_ds, batch_size=128, shuffle=False)
+test_loader = DataLoader(test_ds, batch_size=128, shuffle=False)
 
 
 # plt.hist(y_train, bins=20, edgecolor='black', alpha=0.7)
@@ -253,8 +258,8 @@ test_loader = DataLoader(test_ds, batch_size=16, shuffle=False)
 ###############################################################################################################
 in_feature = 3
 seq_len = 400
-n_heads = 1
-factor = 1
+n_heads = 4
+factor = 2
 num_class = 1
 num_layers = 8
 
@@ -277,7 +282,7 @@ clf = NeuralNetworkClassifier(
     nn.MSELoss(),
     #nn.SmoothL1Loss(beta=0.1),  # Cambiar a SmoothL1Loss,
     # optim.AdamW,optimizer_config={"lr": 1e-6, "betas": (0.9, 0.98), "eps": 4e-09, "weight_decay": 5e-4},
-    optim.AdamW,optimizer_config={"lr": 1e-6, "betas": (0.9, 0.91), "eps": 1e-08, "weight_decay": 1e-6},
+    optim.AdamW,optimizer_config={"lr": 1e-7, "betas": (0.9, 0.95), "eps": 1e-08, "weight_decay": 1e-6},
     # optim.SGD, optimizer_config={"lr":1e-6, "momentum": 0.9,"weight_decay": 1e-4},
     #experiment=Experiment("8mKGHiYeg2P7dZEFlvQv3PEzc")
     experiment = Experiment(api_key="Td3ICbNoK8hW14nwxZfp10SGN",
@@ -291,11 +296,12 @@ if inference == True:
     train = False
 elif inference == False:
     train = True
-export_csv = True
 
-if export_csv == False:
-
-    save_example_to_csv(x_val, y_val, 100, filename="save_params/ciclo_de_carga.csv")
+export_csv = False
+if export_csv == True:
+    inference = False
+    train = False
+    save_example_to_csv(x_test, y_test, 2490, filename="save_params/ciclo_de_carga.csv")
 
 if train ==  True:
     # # training network Normal
@@ -474,15 +480,23 @@ def realizar_inferencia(x_test, y_test, test_loader, modo="onnx", modelo=None):
 
         #Inference SoH Normal ###############################
         # inference_model = Inference_SoH_Normal("save_params/trained_model_normal.pth", input_features=3, seq_len=400, n_heads=32, factor=32, n_class=1, n_layers=4)
-        inference_model = Inference_SoH_Normal_Improve(modelo, input_features=3, seq_len=400, n_heads=1, factor=1, n_class=1, n_layers=8)
+        inference_model = Inference_SoH_Normal_Improve(modelo, input_features=3, seq_len=400, n_heads=4, factor=2, n_class=1, n_layers=8)
         # inference_model = Inference_SoH_Siamese(modelo, input_features=3, seq_len=400, n_heads=32, factor=32, n_class=1, n_layers=4)
         soh_predictions = inference_model.predict(test_loader)
         #Inference SoH ###############################
 
         # real = soh_predictions[1]
+        real_values = []
+        pred_values = []
+
         for idx in range(len(x_test)):
             pred = soh_predictions[0][idx]
             real = soh_predictions[1][idx]
+
+            # Guardar valores para graficar
+            real_values.append(real)
+            pred_values.append(pred)
+
             # Cálculo de errores
             mae_total += np.abs(real - pred)
             mse_sum += (real - pred) ** 2
@@ -490,11 +504,22 @@ def realizar_inferencia(x_test, y_test, test_loader, modo="onnx", modelo=None):
                 mape_total += np.abs((pred - real) / real)
             smap_sup = pred - real
             smap_inf = (np.abs(pred) + np.abs(real)) / 2
-            smap_total += np.abs (smap_sup / smap_inf)
+            smap_total += np.abs(smap_sup / smap_inf)
 
             # Mostrar resultado parcial
             print(f"Ejemplo {idx + 1}/{len(x_test)} -> Predicción: {pred}, Etiqueta Real: {real}")
 
+        # Graficar los valores reales y predichos
+        plt.figure(figsize=(10, 5))
+        plt.plot(real_values, label="Real", color="blue", linestyle="-")
+        plt.plot(pred_values, label="Predicho", color="red", linestyle="-")
+
+        # Etiquetas y título
+        plt.xlabel("Índice de muestra")
+        plt.ylabel("State of Health (SoH)")
+        plt.title("Comparación de SoH Real vs Predicho")
+        plt.legend()
+        plt.show()
     # Cálculo de métricas
     mae = mae_total / len(x_test)
     mse = mse_sum / len(x_test)

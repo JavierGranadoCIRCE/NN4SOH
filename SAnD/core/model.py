@@ -7,7 +7,7 @@ import torch.nn.functional as F
 
 
 class EncoderLayerForSAnDImprove(nn.Module):
-    def __init__(self, input_features, seq_len, n_heads, n_layers, d_model=128, dropout_rate=0.2) -> None:
+    def __init__(self, input_features, seq_len, n_heads, n_layers, d_model=256, dropout_rate=0.1) -> None:
         super(EncoderLayerForSAnDImprove, self).__init__()
         self.d_model = d_model
 
@@ -61,7 +61,7 @@ class SAnDImprove(nn.Module):
 
     def __init__(
             self, input_features: int, seq_len: int, n_heads: int, factor: int,
-            n_class: int, n_layers: int, d_model: int = 128, dropout_rate: float = 0.2
+            n_class: int, n_layers: int, d_model: int = 128, dropout_rate: float = 0.1
 
     ) -> None:
         super(SAnDImprove, self).__init__()
@@ -73,7 +73,7 @@ class SAnDImprove(nn.Module):
         x = self.encoder(x)
         x = self.dense_interpolation(x)
         x = self.clf(x)
-        return x
+        return torch.sigmoid(x)  # Aplicamos sigmoide en la salida final
 
 
 

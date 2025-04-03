@@ -32,7 +32,7 @@ class Inference_SoH_Siamese:
                 x_test = x_test.clone().detach().to(self.device)
                 x_test = x_test.to(self.device)
                 soh_raw = self.siamese_model(x_test)  # Obtener SoH
-                soh_pred = torch.sigmoid(soh_raw).cpu().numpy()
+                soh_pred = soh_raw.cpu().numpy()  # Mover a CPU y convertir a NumPy
                 predictions.append(soh_pred)
                 soh_real.append(y_test.cpu().numpy())
             # ##########################################################################
@@ -120,7 +120,7 @@ class Inference_SoH_Normal:
             for x_test, y_test in test_loader:
                 x_test = x_test.clone().detach().to(self.device)
                 soh_raw = self.sand_model(x_test)  # Obtener SoH
-                soh_pred = torch.sigmoid(soh_raw).cpu().numpy()
+                soh_pred = soh_raw.cpu().numpy()  # Mover a CPU y convertir a NumPy
 
                 predictions.append(soh_pred)
                 soh_real.append(y_test.cpu().numpy())
@@ -188,7 +188,7 @@ class Inference_SoH_Normal_Improve:
             for x_test, y_test in test_loader:
                 x_test = x_test.clone().detach().to(self.device)
                 soh_raw = self.sand_model(x_test)  # Obtener SoH
-                soh_pred = torch.sigmoid(soh_raw).cpu().numpy()
+                soh_pred = soh_raw.cpu().numpy()  # Mover a CPU y convertir a NumPy
 
                 predictions.append(soh_pred)
                 soh_real.append(y_test.cpu().numpy())

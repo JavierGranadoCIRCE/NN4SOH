@@ -488,6 +488,7 @@ class NeuralNetworkClassifier:
         self.experiment.log_parameters(self.hyper_params)
 
         for epoch in range(self._start_epoch, epochs):
+            total_samples = 0
             if checkpoint_path is not None and epoch % 100 == 0:
                 self.save_to_file_normal_improve(checkpoint_path)
             with self.experiment.train():
@@ -529,9 +530,9 @@ class NeuralNetworkClassifier:
                     correct_preds = ((train_pred - y_train.to(self.device)).abs() < threshold).sum().float().item()
                     train_correct += correct_preds
 
-
+                    total_samples = 24950
                     self.experiment.log_metric("loss", train_loss.item(), step=epoch)
-                    self.experiment.log_metric("accuracy", float(train_correct / len(x_train)), step=epoch)
+                    self.experiment.log_metric("accuracy", float(train_correct / total_samples), step=epoch)
 
                     # Actualizar métricas
                     total_loss += train_loss.item()
