@@ -258,8 +258,8 @@ test_loader = DataLoader(test_ds, batch_size=128, shuffle=False)
 ###############################################################################################################
 in_feature = 3
 seq_len = 400
-n_heads = 4
-factor = 2
+n_heads = 1
+factor = 1
 num_class = 1
 num_layers = 8
 
@@ -282,7 +282,7 @@ clf = NeuralNetworkClassifier(
     nn.MSELoss(),
     #nn.SmoothL1Loss(beta=0.1),  # Cambiar a SmoothL1Loss,
     # optim.AdamW,optimizer_config={"lr": 1e-6, "betas": (0.9, 0.98), "eps": 4e-09, "weight_decay": 5e-4},
-    optim.AdamW,optimizer_config={"lr": 1e-7, "betas": (0.9, 0.95), "eps": 1e-08, "weight_decay": 1e-6},
+    optim.AdamW,optimizer_config={"lr": 1e-6, "betas": (0.9, 0.96), "eps": 1e-08, "weight_decay": 1e-6},
     # optim.SGD, optimizer_config={"lr":1e-6, "momentum": 0.9,"weight_decay": 1e-4},
     #experiment=Experiment("8mKGHiYeg2P7dZEFlvQv3PEzc")
     experiment = Experiment(api_key="Td3ICbNoK8hW14nwxZfp10SGN",
