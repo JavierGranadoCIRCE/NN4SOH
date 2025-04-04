@@ -21,7 +21,7 @@ import scipy.io as scio
 import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.preprocessing import MinMaxScaler
-from SAnD.utils.inference import Inference_SoH_Siamese, Inference_SoH_Normal, Inference_SoH_Normal_Improve
+from SAnD.utils.inference import Inference_SoH_Siamese, Inference_SoH_Normal, Inference_SoH_Normal_Improve, Inference_SoH_NARX
 from SAnD.utils.functions import save_example_to_csv
 import scipy.io as scio
 import glob
@@ -30,6 +30,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import onnxruntime as ort
 import numpy as np
+import yaml
+from dataset import load_NASA
 
 from SAnD.core.modules import ContrastiveLoss
 
@@ -50,7 +52,7 @@ from torch.utils.data import TensorDataset, DataLoader
 #raw = scio.loadmat(dataFile)['B0025'][0][0][0][0]
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 data_folder = "dataset/ARC-FY/"  # Modifica esto según tu estructura de carpetas
-mat_files = glob.glob(os.path.join(data_folder, "*.mat"))
+mat_files = glob.glob(os.path.join(data_folder, "B0005.mat"))
 # Lista para almacenar los datos concatenados
 raw = []
 # Cargar cada archivo y agregar sus datos a la lista `raw`
@@ -76,7 +78,7 @@ for i in range(len(raw)):
                 labels.append(raw[i+1][3][0][0][6][0])
             elif i+2 != len(raw) and raw[i+2][0] == ['discharge']:
                 labels.append(raw[i+2][3][0][0][6][0])
-cycles.pop()
+# cycles.pop()
 assert (len(cycles) == len(labels)), 'Number of measurements not matched!'
 
 print(f"cantidad de ciclos: {len(cycles)}")
@@ -92,10 +94,10 @@ for i in range(len(labels)):
     if len(labels[i]) > 0:  # Solo conservar si la etiqueta no está vacía
         filtered_cycles.append(cycles[i])
         filtered_labels.append(labels[i])
-for i in range(len(labels)):
-    if labels[i] > 0.5:  # Solo conservar si la etiqueta es mayor de 0.5
-        filtered_cycles.append(cycles[i])
-        filtered_labels.append(labels[i])
+# for i in range(len(labels)):
+#     if labels[i] > 0.5:  # Solo conservar si la etiqueta es mayor de 0.5
+#         filtered_cycles.append(cycles[i])
+#         filtered_labels.append(labels[i])
 
 # Sustituimos las listas originales por las filtradas
 cycles = filtered_cycles
@@ -297,7 +299,7 @@ clf = NeuralNetworkClassifier(
 
 
 )
-inference = False
+inference = True
 if inference == True:
     train = False
 elif inference == False:
@@ -544,10 +546,124 @@ def realizar_inferencia(x_test, y_test, test_loader, modo="onnx", modelo=None):
     print(f"RMSE: {rmse}")
     print(f"SMAPE: {smape}")
 
+
+def realizar_inferencia_narx(model_path):
+
+    predicciones = []
+    etiquetas_reales = []
+    mae_total, mse_sum, mape_total, smap_total = 0, 0, 0, 0
+
+    #Inference SoH ###############################
+    with open('config.yaml', 'r') as file:
+        cfg = yaml.safe_load(file)
+
+        # # Access the variables
+    NUM_CYCLES = cfg['NUM_CYCLES']
+    NUM_PREDS = cfg['NUM_PREDS']
+    FEATURE_DIM1 = cfg['FEATURE_DIM1']
+    FEATURE_DIM2 = cfg['FEATURE_DIM2']
+    NUM_ATTENTION = cfg['NUM_ATTENTION']
+    EPOCHS = cfg['EPOCHS']
+    LEARNING_RATE = cfg['LEARNING_RATE']
+    BATCH_SIZE = cfg['BATCH_SIZE']
+
+    device = torch.device("cpu")
+
+    # Load data
+    train_dataset, test_dataset = load_NASA(folder='NASA_DATA', num_cycles=NUM_CYCLES+NUM_PREDS-1, split_ratio=0.5, scale_data=True)
+
+    # Train/test split
+    train_dataloader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
+    test_dataloader  = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=True)
+
+    narx_model = torch.load(model_path, map_location=device, weights_only=False)
+    narx_model.to(device)
+    narx_model.eval()
+    real_values = []
+    pred_values = []
+    soh_real = []
+    train_losses = []
+    for inputs, outputs in test_dataloader:
+        inputs = inputs.float().to(device)
+        outputs = outputs.float().to(device)
+        predicted_outputs = narx_model.pred_sequence(inputs, outputs)
+
+        # Convertir listas a numpy arrays
+        soh_pred = predicted_outputs.flatten()
+        soh_real = outputs.flatten()
+
+        # Llamar a la función de visualización
+        #self.plot_soh(soh_real, soh_pred)
+
+    # return soh_pred, soh_real
+
+    mae_total = 0.0
+    mape_total = 0.0
+    mse_sum = 0.0
+    smap_total = 0.0
+
+    real_values = []
+    pred_values = []
+
+    for idx in range(len(test_dataloader)):
+        pred = soh_pred[idx]
+        real = soh_real[idx]
+
+        # Convertir a valores escalares de NumPy
+        real_np = real.detach().cpu().numpy() if isinstance(real, torch.Tensor) else real
+        pred_np = pred.detach().cpu().numpy() if isinstance(pred, torch.Tensor) else pred
+
+        # Guardar para graficar
+        real_values.append(real_np)
+        pred_values.append(pred_np)
+
+        # Cálculo de errores
+        mae_total += np.abs(real_np - pred_np)
+        mse_sum += (real_np - pred_np) ** 2
+        if real_np != 0:
+            mape_total += np.abs((pred_np - real_np) / real_np)
+        smap_sup = pred_np - real_np
+        smap_inf = (np.abs(pred_np) + np.abs(real_np)) / 2
+        smap_total += np.abs(smap_sup / smap_inf)
+
+        # Mostrar resultado parcial
+        print(f"Ejemplo {idx + 1}/{len(x_test)} -> Predicción: {pred_np}, Etiqueta Real: {real_np}")
+
+    # Graficar los valores reales y predichos
+    plt.figure(figsize=(10, 5))
+    plt.scatter(range(len(real_values[:100])), real_values[:100], label="Real", color="blue", marker="o")
+    plt.scatter(range(len(pred_values[:100])), pred_values[:100], label="Predicho", color="red", marker="x")
+
+
+    # Etiquetas y título
+    plt.xlabel("Índice de muestra")
+    plt.ylabel("State of Health (SoH)")
+    plt.title("Comparación de SoH Real vs Predicho")
+    plt.legend()
+    plt.show()
+    # Cálculo de métricas
+    mae = mae_total / len(x_test)
+    mse = mse_sum / len(x_test)
+    rmse = np.sqrt(mse)
+    smape = smap_total / len(x_test)
+    # Calcula el MAPE promedio
+    mape = mape_total / len(x_test)
+    #  Multiplica por 100 para tener el resultado en porcentaje
+    # mape_total*= 100
+    #mape = (mape_total / len(x_test)) * 100
+
+    print("\nMétricas finales:")
+    print(f"MAE: {mae}")
+    print(f"MSE: {mse}")
+    print(f"RMSE: {rmse}")
+    print(f"SMAPE: {smape}")
+
+
 # 🔹 Ejemplo de uso
 if inference ==  True:
     modo = "pth"  # Cambia a "pth" para usar el modelo original
     modelo ="save_params/trained_model_normal_improve.pth"
-    realizar_inferencia(x_test, y_test, test_loader, modo, modelo)
+    # realizar_inferencia(x_test, y_test, test_loader, modo, modelo)
+    realizar_inferencia_narx("save_params/trained_model_anrx.pt")
 
 

@@ -6,6 +6,10 @@ import torch
 from sklearn.metrics import mean_squared_error, mean_absolute_error
 from scipy.stats import pearsonr
 from sympy import false
+from torch.utils.data import DataLoader
+import yaml
+
+from dataset import load_NASA
 
 from SAnD.core.model import SAnD, SAnD_Embedding, SiameseSAnD, SAnDImprove
 
@@ -199,5 +203,53 @@ class Inference_SoH_Normal_Improve:
 
         # Llamar a la función de visualización
         #self.plot_soh(soh_real, soh_pred)
+
+        return soh_pred, soh_real
+
+class Inference_SoH_NARX:
+    def __init__(self, model_path, device="cuda"):
+
+        # Load the YAML configuration file
+        with open('config.yaml', 'r') as file:
+            cfg = yaml.safe_load(file)
+
+        # # Access the variables
+        NUM_CYCLES = cfg['NUM_CYCLES']
+        NUM_PREDS = cfg['NUM_PREDS']
+        FEATURE_DIM1 = cfg['FEATURE_DIM1']
+        FEATURE_DIM2 = cfg['FEATURE_DIM2']
+        NUM_ATTENTION = cfg['NUM_ATTENTION']
+        EPOCHS = cfg['EPOCHS']
+        LEARNING_RATE = cfg['LEARNING_RATE']
+        BATCH_SIZE = cfg['BATCH_SIZE']
+
+        self.device = device
+
+        # Load data
+        train_dataset, test_dataset = load_NASA(folder='NASA_DATA', num_cycles=NUM_CYCLES+NUM_PREDS-1, split_ratio=0.5, scale_data=True)
+
+        # Train/test split
+        train_dataloader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
+        test_dataloader  = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=True)
+
+        self.narx_model = torch.load(model_path, map_location=device, weights_only=False)
+        self.narx_model.to(device)
+        self.narx_model.eval()
+
+    def predict(self, test_dataloader):
+        predictions = []
+        soh_real = []
+        train_losses = []
+        for inputs, outputs in test_dataloader:
+            inputs = inputs.float().to(self.device)
+            outputs = outputs.float().to(self.device)
+            predicted_outputs = self.narx_model.pred_sequence(inputs, outputs)
+
+            # Convertir listas a numpy arrays
+            soh_pred = np.concatenate(predicted_outputs).flatten()
+            soh_real = np.concatenate(outputs).flatten()
+
+            # Llamar a la función de visualización
+            #self.plot_soh(soh_real, soh_pred)
 
         return soh_pred, soh_real
