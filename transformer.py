@@ -570,11 +570,10 @@ def realizar_inferencia_narx(model_path):
     device = torch.device("cpu")
 
     # Load data
-    train_dataset, test_dataset = load_NASA(folder='NASA_DATA', num_cycles=NUM_CYCLES+NUM_PREDS-1, split_ratio=0.5, scale_data=True)
+    _, test_dataset = load_NASA(folder='NASA_DATA', num_cycles=NUM_CYCLES+NUM_PREDS-1, split_ratio=1, scale_data=True)
 
     # Train/test split
-    train_dataloader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
-    test_dataloader  = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=True)
+    test_dataloader = torch.utils.data.DataLoader(test_dataset, batch_size=1, shuffle=False)
 
     narx_model = torch.load(model_path, map_location=device, weights_only=False)
     narx_model.to(device)
@@ -582,32 +581,28 @@ def realizar_inferencia_narx(model_path):
     real_values = []
     pred_values = []
     soh_real = []
+    soh_pred = []
     train_losses = []
-    for inputs, outputs in test_dataloader:
-        inputs = inputs.float().to(device)
-        outputs = outputs.float().to(device)
-        predicted_outputs = narx_model.pred_sequence(inputs, outputs)
+    with torch.no_grad():
+        for inputs, targets in test_dataloader:
+            inputs = inputs.float().to(device)
+            targets = targets.float().to(device)
+            outputs = narx_model.pred_sequence(inputs, targets)  # igual que en entrenamiento
+            pred = outputs[:, NUM_CYCLES-1:].cpu().numpy().flatten()
+            real = targets[:, NUM_CYCLES-1:].cpu().numpy().flatten()
 
-        # Convertir listas a numpy arrays
-        soh_pred = predicted_outputs.flatten()
-        soh_real = outputs.flatten()
-
-        # Llamar a la función de visualización
-        #self.plot_soh(soh_real, soh_pred)
-
-    # return soh_pred, soh_real
+            pred_values.extend(pred)
+            real_values.extend(real)
 
     mae_total = 0.0
     mape_total = 0.0
     mse_sum = 0.0
     smap_total = 0.0
 
-    real_values = []
-    pred_values = []
 
-    for idx in range(len(test_dataloader)):
-        pred = soh_pred[idx]
-        real = soh_real[idx]
+    for idx in range(len(real_values)):
+        pred = pred_values[idx]
+        real = real_values[idx]
 
         # Convertir a valores escalares de NumPy
         real_np = real.detach().cpu().numpy() if isinstance(real, torch.Tensor) else real
@@ -627,12 +622,12 @@ def realizar_inferencia_narx(model_path):
         smap_total += np.abs(smap_sup / smap_inf)
 
         # Mostrar resultado parcial
-        print(f"Ejemplo {idx + 1}/{len(x_test)} -> Predicción: {pred_np}, Etiqueta Real: {real_np}")
+        print(f"Ejemplo {idx + 1}/{len(real_values)} -> Predicción: {pred_np}, Etiqueta Real: {real_np}")
 
     # Graficar los valores reales y predichos
     plt.figure(figsize=(10, 5))
-    plt.scatter(range(len(real_values[:100])), real_values[:100], label="Real", color="blue", marker="o")
-    plt.scatter(range(len(pred_values[:100])), pred_values[:100], label="Predicho", color="red", marker="x")
+    plt.scatter(range(len(real_values)), real_values, label="Real", color="blue", marker="o")
+    plt.scatter(range(len(pred_values)), pred_values, label="Predicho", color="red", marker="x")
 
 
     # Etiquetas y título
