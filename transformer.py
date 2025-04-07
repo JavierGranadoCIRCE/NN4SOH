@@ -659,6 +659,6 @@ if inference ==  True:
     modo = "pth"  # Cambia a "pth" para usar el modelo original
     modelo ="save_params/trained_model_normal_improve.pth"
     # realizar_inferencia(x_test, y_test, test_loader, modo, modelo)
-    realizar_inferencia_narx("save_params/trained_model_anrx.pt")
+    realizar_inferencia_narx("save_params/trained_model_narx.pt")
 
 
