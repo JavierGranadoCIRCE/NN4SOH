@@ -37,7 +37,7 @@ from SAnD.core.modules import ContrastiveLoss
 
 from SAnD.core.modules import ContrastiveLoss
 
-from SAnD.core.model import SAnD, SAnD_Embedding, SiameseSAnD, SAnDImprove
+from SAnD.core.model import SAnD, SAnD_Embedding, SiameseSAnD, SAnDImprove, NARX_Transformer
 from SAnD.utils.functions import generar_pares_aleatorios
 from SAnD.utils.trainer import NeuralNetworkClassifier
 from sklearn.preprocessing import MinMaxScaler
@@ -52,7 +52,7 @@ from torch.utils.data import TensorDataset, DataLoader
 #raw = scio.loadmat(dataFile)['B0025'][0][0][0][0]
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 data_folder = "dataset/ARC-FY/"  # Modifica esto según tu estructura de carpetas
-mat_files = glob.glob(os.path.join(data_folder, "B0005.mat"))
+mat_files = glob.glob(os.path.join(data_folder, "*.mat"))
 # Lista para almacenar los datos concatenados
 raw = []
 # Cargar cada archivo y agregar sus datos a la lista `raw`
@@ -78,7 +78,7 @@ for i in range(len(raw)):
                 labels.append(raw[i+1][3][0][0][6][0])
             elif i+2 != len(raw) and raw[i+2][0] == ['discharge']:
                 labels.append(raw[i+2][3][0][0][6][0])
-# cycles.pop()
+cycles.pop()
 assert (len(cycles) == len(labels)), 'Number of measurements not matched!'
 
 print(f"cantidad de ciclos: {len(cycles)}")
@@ -197,9 +197,9 @@ train_ds = TensorDataset(x_train, y_train)
 val_ds = TensorDataset(x_val, y_val)
 test_ds = TensorDataset(x_test, y_test)
 
-train_loader = DataLoader(train_ds, batch_size=128, shuffle=True)
-val_loader = DataLoader(val_ds, batch_size=128, shuffle=False)
-test_loader = DataLoader(test_ds, batch_size=128, shuffle=False)
+train_loader = DataLoader(train_ds, batch_size=32, shuffle=True)
+val_loader = DataLoader(val_ds, batch_size=32, shuffle=False)
+test_loader = DataLoader(test_ds, batch_size=32, shuffle=False)
 
 
 # plt.hist(y_train, bins=20, edgecolor='black', alpha=0.7)
@@ -266,7 +266,7 @@ test_loader = DataLoader(test_ds, batch_size=128, shuffle=False)
 ###############################################################################################################
 in_feature = 3
 seq_len = 400
-n_heads = 1
+n_heads = 16
 factor = 1
 num_class = 1
 num_layers = 8
@@ -280,14 +280,30 @@ hyperparameters = {
     "num_layers": num_layers
 }
 
+# Load the YAML configuration file
+with open('config.yaml', 'r') as file:
+    cfg = yaml.safe_load(file)
+
+# # Access the variables
+num_cycles = cfg['NUM_CYCLES']
+num_preds = cfg['NUM_PREDS']
+feature_dim1 = cfg['FEATURE_DIM1']
+feature_dim2 = cfg['FEATURE_DIM2']
+num_attention = cfg['NUM_ATTENTION']
+EPOCHS = cfg['EPOCHS']
+LEARNING_RATE = cfg['LEARNING_RATE']
+BATCH_SIZE = cfg['BATCH_SIZE']
+
 
 clf = NeuralNetworkClassifier(
     SiameseSAnD(SAnD_Embedding(in_feature, seq_len, n_heads, factor, num_class, num_layers)),
     SAnD(in_feature, seq_len, n_heads, factor, num_class, num_layers),
     SAnDImprove(in_feature, seq_len, n_heads, factor, num_class, num_layers),
+    NARX_Transformer(in_feature, seq_len, n_heads),
     ContrastiveLoss(),
     nn.MSELoss(),
     nn.MSELoss(),
+    nn.L1Loss(),
     #nn.SmoothL1Loss(beta=0.1),  # Cambiar a SmoothL1Loss,
     # optim.AdamW,optimizer_config={"lr": 1e-6, "betas": (0.9, 0.98), "eps": 4e-09, "weight_decay": 5e-4},
     optim.AdamW,optimizer_config={"lr": 1e-6, "betas": (0.9, 0.96), "eps": 1e-08, "weight_decay": 1e-6},
@@ -299,7 +315,7 @@ clf = NeuralNetworkClassifier(
 
 
 )
-inference = True
+inference = False
 if inference == True:
     train = False
 elif inference == False:
@@ -321,12 +337,12 @@ if train ==  True:
     # )
 
     # #training network Improve
-    clf.fit_normal_improve(x_train, y_train, x_val, y_val, x_test, y_test,
-             {"train": train_loader,
-          "val": val_loader,
-          "test": test_loader},
-          epochs=80
-    )
+    # clf.fit_normal_improve(x_train, y_train, x_val, y_val, x_test, y_test,
+    #          {"train": train_loader,
+    #       "val": val_loader,
+    #       "test": test_loader},
+    #       epochs=80
+    # )
     # # # #
     # training network Siamese
     # clf.fit_siamese(x_train, y_train, x_val, y_val, x_test, y_test,
@@ -335,6 +351,16 @@ if train ==  True:
     #         "test": test_loader},
     #         epochs=80
     # )
+
+    # training network NARX
+    clf.fit_NARX_Transformer(x_train, y_train, x_val, y_val, x_test, y_test,
+                {"train": train_loader,
+            "val": val_loader,
+            "test": test_loader},
+            epochs=80
+    )
+
+
     # # # #
     # # # #
     # # # #
@@ -354,14 +380,18 @@ if train ==  True:
     # # # #
     # # # # save
     # clf.save_to_file_normal("save_params/")
-    clf.save_to_file_normal_improve("save_params/")
+    # clf.save_to_file_normal_improve("save_params/")
     #clf.save_to_file_siamese("save_params/")
+    clf.save_to_file_Narx("save_params/")
     # #
     # # #
     # # #
     # # #
     # # # # Conversión a ONNX
     # # # # Cargar el modelo entrenado
+
+
+
     class WrappedModel(nn.Module):
         def __init__(self, model):
             super(WrappedModel, self).__init__()
@@ -371,9 +401,13 @@ if train ==  True:
         def forward(self, x):
             return self.sigmoid(self.model(x))  # Aplicar sigmoide después del modelo
 
+
+
+
     # modelo = SAnD(in_feature, seq_len, n_heads, factor, num_class, num_layers)
-    modelo = SAnDImprove(in_feature, seq_len, n_heads, factor, num_class, num_layers)
-    # modelo = SAnD_Embedding(in_feature, seq_len, n_heads, factor, num_class, num_layers)
+    # modelo = SAnDImprove(in_feature, seq_len, n_heads, factor, num_class, num_layers)
+    modelo = NARX_Transformer(in_feature, seq_len, n_heads)
+    #modelo = SAnD_Embedding(in_feature, seq_len, n_heads, factor, num_class, num_layers)
     # # # # Verificar los atributos de modelo_siamese
     # print(modelo_siamese)
     # # # # # Verificar los atributos de modelo_normal
@@ -389,29 +423,31 @@ if train ==  True:
     # # #
     # # # # 2. Cargar el diccionario de estado correctamente
 
-    # checkpoint = torch.load("save_params/trained_model_normal_old.pth", map_location="cpu")
-    # print(checkpoint.keys())  # Ver qué hay dentro
-    # if "hyperparameters" in checkpoint:  # Si guardaste los hiperparámetros
-    #     print(checkpoint["hyperparameters"])
-    checkpoint = torch.load("save_params/trained_model_normal_improve.pth", map_location="cpu")
-    # checkpoint = torch.load("save_params/trained_model_normal.pth", map_location="cpu")
+    # # checkpoint = torch.load("save_params/trained_model_normal_old.pth", map_location="cpu")
+    # # print(checkpoint.keys())  # Ver qué hay dentro
+    # # if "hyperparameters" in checkpoint:  # Si guardaste los hiperparámetros
+    # #     print(checkpoint["hyperparameters"])
+    # checkpoint = torch.load("save_params/trained_model_normal_improve.pth", map_location="cpu")
+    # # checkpoint = torch.load("save_params/trained_model_normal.pth", map_location="cpu")
+    checkpoint = torch.load("save_params/trained_model_narx.pth", map_location="cpu")
     modelo.load_state_dict(checkpoint["model_state_dict"], strict=False)
     modelo.eval()
     wrapped_model = WrappedModel(modelo)  # Envolver modelo con sigmoide
-    # #
-    # # # # Crear un dummy input (ajusta el tamaño según tu entrada real)
     # # #
+    # # # # # Crear un dummy input (ajusta el tamaño según tu entrada real)
+    # # # #
     input_shape = (400, 3)
     dummy_input = torch.randn(1, *input_shape)
-    # # #
-    # # # # Exportar a ONNX
-    # torch.onnx.export(modelo, dummy_input, "save_params/trained_model_normal.onnx", opset_version=13)
-    torch.onnx.export(wrapped_model, dummy_input, "save_params/trained_model_normal_improve.onnx", opset_version=13)
-    # torch.onnx.export(modelo, dummy_input, "save_params/trained_model_normal_improve_old.onnx", opset_version=13)
-    # #
     # # # #
-    #
+    # # # # # Exportar a ONNX
+    # # torch.onnx.export(modelo, dummy_input, "save_params/trained_model_normal.onnx", opset_version=13)
+    # torch.onnx.export(wrapped_model, dummy_input, "save_params/trained_model_normal_improve.onnx", opset_version=13)
+    # # torch.onnx.export(modelo, dummy_input, "save_params/trained_model_normal_improve_old.onnx", opset_version=13)
+    torch.onnx.export(wrapped_model, dummy_input, "save_params/trained_model_narx.onnx", opset_version=17)
+    # # #
+    # # # # #
     # #
+    # # #
 # ##################################################################################################
 # # #Inferencia en PC
 # #############################################################################################
@@ -472,7 +508,7 @@ def realizar_inferencia(x_test, y_test, test_loader, modo="onnx", modelo=None):
         mae_total, mse_sum, mape_total, smap_total = 0, 0, 0, 0
         # sand_model = SAnD(in_feature, seq_len, n_heads, factor, num_class, num_layers)
         # # Cargar los pesos del modelo entrenado
-        # checkpoint = torch.load("save_params/trained_model_normal.pth", map_location=device)
+        #checkpoint = torch.load("save_params/trained_model_narx.pth", map_location=device)
         # sand_model.load_state_dict(checkpoint["model_state_dict"], strict=False)
         # sand_model.to(device)
         # sand_model.eval()
@@ -488,10 +524,13 @@ def realizar_inferencia(x_test, y_test, test_loader, modo="onnx", modelo=None):
 
         #Inference SoH Normal ###############################
         # inference_model = Inference_SoH_Normal("save_params/trained_model_normal.pth", input_features=3, seq_len=400, n_heads=32, factor=32, n_class=1, n_layers=4)
-        inference_model = Inference_SoH_Normal_Improve(modelo, input_features=3, seq_len=400, n_heads=1, factor=1, n_class=1, n_layers=8)
+        #inference_model = Inference_SoH_Normal_Improve(modelo, input_features=3, seq_len=400, n_heads=1, factor=1, n_class=1, n_layers=8)
+        inference_model = Inference_SoH_NARX(modelo, input_features=3, seq_len=400, n_heads=1)
         # inference_model = Inference_SoH_Siamese(modelo, input_features=3, seq_len=400, n_heads=32, factor=32, n_class=1, n_layers=4)
         soh_predictions = inference_model.predict(test_loader)
         #Inference SoH ###############################
+
+
 
         # real = soh_predictions[1]
         real_values = []
@@ -657,8 +696,8 @@ def realizar_inferencia_narx(model_path):
 # 🔹 Ejemplo de uso
 if inference ==  True:
     modo = "pth"  # Cambia a "pth" para usar el modelo original
-    modelo ="save_params/trained_model_normal_improve.pth"
-    # realizar_inferencia(x_test, y_test, test_loader, modo, modelo)
-    realizar_inferencia_narx("save_params/trained_model_narx.pt")
+    modelo ="save_params/trained_model_narx.pth"
+    realizar_inferencia(x_test, y_test, test_loader, modo, modelo)
+    #realizar_inferencia("save_params/trained_model_narx.pth")
 
 

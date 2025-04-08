@@ -11,7 +11,7 @@ import yaml
 
 from dataset import load_NASA
 
-from SAnD.core.model import SAnD, SAnD_Embedding, SiameseSAnD, SAnDImprove
+from SAnD.core.model import SAnD, SAnD_Embedding, SiameseSAnD, SAnDImprove, NARX_Transformer
 
 
 class Inference_SoH_Siamese:
@@ -206,50 +206,39 @@ class Inference_SoH_Normal_Improve:
 
         return soh_pred, soh_real
 
+
 class Inference_SoH_NARX:
-    def __init__(self, model_path, device="cuda"):
-
-        # Load the YAML configuration file
-        with open('config.yaml', 'r') as file:
-            cfg = yaml.safe_load(file)
-
-        # # Access the variables
-        NUM_CYCLES = cfg['NUM_CYCLES']
-        NUM_PREDS = cfg['NUM_PREDS']
-        FEATURE_DIM1 = cfg['FEATURE_DIM1']
-        FEATURE_DIM2 = cfg['FEATURE_DIM2']
-        NUM_ATTENTION = cfg['NUM_ATTENTION']
-        EPOCHS = cfg['EPOCHS']
-        LEARNING_RATE = cfg['LEARNING_RATE']
-        BATCH_SIZE = cfg['BATCH_SIZE']
-
+    def __init__(self, model_path, input_features, seq_len, n_heads, device="cuda"):
         self.device = device
+        self.sand_model = NARX_Transformer(input_features, seq_len, n_heads),
 
-        # Load data
-        train_dataset, test_dataset = load_NASA(folder='NASA_DATA', num_cycles=NUM_CYCLES+NUM_PREDS-1, split_ratio=0.5, scale_data=True)
+        # Cargar los pesos del modelo entrenado
+        checkpoint = torch.load(model_path, map_location=device)
+        print(checkpoint.keys())
 
-        # Train/test split
-        train_dataloader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
-        test_dataloader  = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=True)
+        self.sand_model.load_state_dict(checkpoint["model_state_dict"])
 
-        self.narx_model = torch.load(model_path, map_location=device, weights_only=False)
-        self.narx_model.to(device)
-        self.narx_model.eval()
+        self.sand_model.to(device)
+        self.sand_model.eval()
 
-    def predict(self, test_dataloader):
+    def predict(self, test_loader):
         predictions = []
         soh_real = []
-        train_losses = []
-        for inputs, outputs in test_dataloader:
-            inputs = inputs.float().to(self.device)
-            outputs = outputs.float().to(self.device)
-            predicted_outputs = self.narx_model.pred_sequence(inputs, outputs)
+        with torch.no_grad():
+            for x_test, y_test in test_loader:
+                x_test = x_test.clone().detach().to(self.device)
+                soh_raw = self.sand_model(x_test)  # Obtener SoH
+                soh_pred = soh_raw.cpu().numpy()  # Mover a CPU y convertir a NumPy
 
-            # Convertir listas a numpy arrays
-            soh_pred = np.concatenate(predicted_outputs).flatten()
-            soh_real = np.concatenate(outputs).flatten()
+                predictions.append(soh_pred)
+                soh_real.append(y_test.cpu().numpy())
 
-            # Llamar a la función de visualización
-            #self.plot_soh(soh_real, soh_pred)
+        # Convertir listas a numpy arrays
+        soh_pred = np.concatenate(predictions).flatten()
+        soh_real = np.concatenate(soh_real).flatten()
+
+        # Llamar a la función de visualización
+        #self.plot_soh(soh_real, soh_pred)
 
         return soh_pred, soh_real
+

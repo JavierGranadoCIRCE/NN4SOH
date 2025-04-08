@@ -8,7 +8,7 @@ FEATURE_DIM2: 16
 NUM_ATTENTION: 16
 
 # Training settings
-EPOCHS: 2000
+EPOCHS: 2
 LEARNING_RATE: 0.001
 
 # Other settings
