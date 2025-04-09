@@ -226,14 +226,14 @@ class Inference_SoH_NARX:
         soh_real = []
         test_total = []
         with torch.no_grad():
-            for x_test_narx, y_test_narx in test_loader_narx:
+            for x_test_narx, cap_test, y_test_narx in test_loader_narx:
                 x_test_narx = x_test_narx.to(self.device) if isinstance(x_test_narx, torch.Tensor) else [i_val.to(self.device) for i_val in x_test_narx]
                 y_test_narx = y_test_narx.to(self.device)
                 b_size = y_test_narx.shape
                 test_total += y_test_narx.shape
                 cap_test = cap_test.to(self.device)
                 soh_pred = self.sand_model(x_test_narx, cap_test)
-                predictions.append(soh_pred)
+                predictions.append(soh_pred.cpu())
                 soh_real.append(y_test_narx.cpu().numpy())
 
 

@@ -346,7 +346,7 @@ class NeuralNetworkClassifier:
                 total_samples = 0.0
 
                 self.model_n.train()
-                pbar = tqdm.tqdm(total=len_of_train_dataset)
+                pbar = tqdm(total=len_of_train_dataset)
                 for x_train, y_train in loader["train"]:
                     b_size = y_train.shape[0]
                     total_samples += y_train.shape[0]
@@ -388,7 +388,7 @@ class NeuralNetworkClassifier:
                         val_total = 0.0
 
                         self.model_n.eval()
-                        pbar = tqdm.tqdm(total=len_of_val_dataset)
+                        pbar = tqdm(total=len_of_val_dataset)
                         for x_val, y_val in loader["val"]:
                             b_size = y_val.shape[0]
                             val_total += y_val.shape[0]
@@ -417,7 +417,7 @@ class NeuralNetworkClassifier:
                         test_correct = 0.0
                         test_total = 0.0
                         self.model_n.eval()
-                        pbar = tqdm.tqdm(total=len_of_test_dataset)
+                        pbar = tqdm(total=len_of_test_dataset)
                         for x_test, y_test in loader["test"]:
                             b_size = y_test.shape[0]
                             test_total += y_test.shape[0]
@@ -566,7 +566,7 @@ class NeuralNetworkClassifier:
                         val_total = 0.0
 
                         self.model_ni.eval()
-                        pbar = tqdm.tqdm(total=len_of_val_dataset)
+                        pbar = tqdm(total=len_of_val_dataset)
                         for x_val, y_val in loader["val"]:
                             b_size = y_val.shape[0]
                             val_total += y_val.shape[0]
@@ -599,7 +599,7 @@ class NeuralNetworkClassifier:
                         test_correct = 0.0
                         test_total = 0.0
                         self.model_ni.eval()
-                        pbar = tqdm.tqdm(total=len_of_test_dataset)
+                        pbar = tqdm(total=len_of_test_dataset)
                         for x_test, y_test in loader["test"]:
                             b_size = y_test.shape[0]
                             test_total += y_test.shape[0]
