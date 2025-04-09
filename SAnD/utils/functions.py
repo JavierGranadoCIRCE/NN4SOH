@@ -95,6 +95,22 @@ def generar_pares_aleatorios(x_train, y_train, umbral_soh=0.02):
     return x1, x2, y_cont
 
 
+def create_cycle_triplets(data, labels):
+    x_pairs = []
+    capacities = []
+    y_targets = []
+
+    for i in range(1, len(data) - 1):
+        x_pair = torch.stack([data[i], data[i+1]])  # (2, 400, 3)
+        x_pairs.append(x_pair)
+        capacities.append(labels[i])       # SoH del ciclo anterior
+        y_targets.append(labels[i+1])      # SoH del ciclo actual (target)
+
+    x_pairs = torch.stack(x_pairs)
+    capacities = torch.tensor(capacities, dtype=torch.float32).unsqueeze(1)  # (N-2, 1)
+    y_targets = torch.tensor(y_targets, dtype=torch.float32)
+    return x_pairs, capacities, y_targets
+
 def save_example_to_csv(x_train, y_train, example_idx, filename="ciclo_de_carga.csv"):
     """
     Guarda un ejemplo de x_train con su correspondiente etiqueta de y_train en un archivo CSV.
@@ -127,8 +143,36 @@ def save_example_to_csv(x_train, y_train, example_idx, filename="ciclo_de_carga.
 
     print(f"Ejemplo {example_idx} guardado en {filename}")
 
-# Ejemplo de uso:
-# save_example_to_csv(x_train, y_train, 0, "output_example.csv")
+
+
+def save_example_to_csv_narx(x_pair, cap_input, y_target, example_idx, filename="ciclo_de_carga.csv"):
+    """
+    Guarda un ejemplo de entrada (x_pair + cap_input) y su etiqueta (y_target) en un CSV.
+
+    - x_pair: Tensor con forma (N, 2, 400, 3)
+    - cap_input: Tensor con forma (N, 1)
+    - y_target: Tensor con forma (N,)
+    """
+
+    if example_idx < 0 or example_idx >= len(x_pair):
+        raise ValueError(f"Índice fuera de rango: {example_idx}")
+
+    # x_pair: (2, 400, 3) → flatten → 2*400*3 = 2400
+    example_data = x_pair[example_idx].reshape(-1).numpy()
+
+    # cap_input: (1,) → float
+    example_cap = cap_input[example_idx].numpy()
+
+    # y_target: (1,) → float
+    label = y_target[example_idx].numpy()
+
+    # Concatenar todo: [x_pair_flattened, cap_input, label]
+    all_data = np.concatenate([example_data, cap_input[example_idx], [label]])
+
+    df = pd.DataFrame(all_data.reshape(1, -1))
+    df.to_csv(filename, header=False, index=False)
+
+    print(f"Ejemplo {example_idx} guardado en {filename}")
 
 
 

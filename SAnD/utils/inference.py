@@ -208,9 +208,9 @@ class Inference_SoH_Normal_Improve:
 
 
 class Inference_SoH_NARX:
-    def __init__(self, model_path, input_features, seq_len, n_heads, device="cuda"):
+    def __init__(self, model_path, input_features, seq_len, n_heads, num_cycles, num_preds, device="cuda"):
         self.device = device
-        self.sand_model = NARX_Transformer(input_features, seq_len, n_heads),
+        self.sand_model = NARX_Transformer(input_features, seq_len, n_heads, num_cycles, num_preds)
 
         # Cargar los pesos del modelo entrenado
         checkpoint = torch.load(model_path, map_location=device)
@@ -221,17 +221,21 @@ class Inference_SoH_NARX:
         self.sand_model.to(device)
         self.sand_model.eval()
 
-    def predict(self, test_loader):
+    def predict(self, test_loader_narx):
         predictions = []
         soh_real = []
+        test_total = []
         with torch.no_grad():
-            for x_test, y_test in test_loader:
-                x_test = x_test.clone().detach().to(self.device)
-                soh_raw = self.sand_model(x_test)  # Obtener SoH
-                soh_pred = soh_raw.cpu().numpy()  # Mover a CPU y convertir a NumPy
-
+            for x_test_narx, y_test_narx in test_loader_narx:
+                x_test_narx = x_test_narx.to(self.device) if isinstance(x_test_narx, torch.Tensor) else [i_val.to(self.device) for i_val in x_test_narx]
+                y_test_narx = y_test_narx.to(self.device)
+                b_size = y_test_narx.shape
+                test_total += y_test_narx.shape
+                cap_test = cap_test.to(self.device)
+                soh_pred = self.sand_model(x_test_narx, cap_test)
                 predictions.append(soh_pred)
-                soh_real.append(y_test.cpu().numpy())
+                soh_real.append(y_test_narx.cpu().numpy())
+
 
         # Convertir listas a numpy arrays
         soh_pred = np.concatenate(predictions).flatten()
