@@ -168,7 +168,32 @@ labels=torch.from_numpy(np.array(labels)).type(torch.FloatTensor)
 
 
 ##########################################################################################################
-#Dataloader para NARX
+#Dataloader para NARX con los datos de la NASA de NARX
+##########################################################################################################
+# Load the YAML configuration file
+with open('config.yaml', 'r') as file:
+    cfg = yaml.safe_load(file)
+
+# # Access the variables
+NUM_CYCLES = cfg['NUM_CYCLES']
+NUM_PREDS = cfg['NUM_PREDS']
+FEATURE_DIM1 = cfg['FEATURE_DIM1']
+FEATURE_DIM2 = cfg['FEATURE_DIM2']
+NUM_ATTENTION = cfg['NUM_ATTENTION']
+EPOCHS = cfg['EPOCHS']
+LEARNING_RATE = cfg['LEARNING_RATE']
+BATCH_SIZE = cfg['BATCH_SIZE']
+
+# Load data
+train_dataset, test_dataset = load_NASA(folder='NASA_DATA', num_cycles=NUM_CYCLES+NUM_PREDS-1, split_ratio=0.5, scale_data=True)
+
+# Train/test split
+train_dataloader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
+test_dataloader  = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=True)
+
+
+##########################################################################################################
+#Dataloader para NARX con los datos de la NASA de NN4SOH
 ##########################################################################################################
 
 x_pairs, cap_inputs, y_targets = create_cycle_triplets(data, labels)
@@ -188,21 +213,14 @@ val_loader_narx = DataLoader(val_ds_narx, batch_size=32, shuffle=False)
 test_loader_narx = DataLoader(test_ds_narx, batch_size=32, shuffle=False)
 
 
-
-
 ##########################################################################################################
-#Dataloader para NARX
+#Dataloader para NN4SOH
 ##########################################################################################################
 
 
 # Dividir en train, val y test (estratificado si `labels` tiene clases desbalanceadas)
 x_train, x_temp, y_train, y_temp = train_test_split(data, labels, test_size=0.2, random_state=42, shuffle=False)
 x_val, x_test, y_val, y_test = train_test_split(x_temp, y_temp, test_size=0.5, random_state=42, shuffle=False)
-
-# Convertir a tensores
-# x_train = torch.tensor(x_train, dtype=torch.float32)
-# x_val = torch.tensor(x_val, dtype=torch.float32)
-# x_test = torch.tensor(x_test, dtype=torch.float32)
 
 x_train = x_train.clone().detach().float()
 x_val = x_val.clone().detach().float()
@@ -211,11 +229,6 @@ x_test = x_test.clone().detach().float()
 y_train = y_train.clone().detach().float()
 y_val = y_val.clone().detach().float()
 y_test = y_test.clone().detach().float()
-
-
-# y_train = torch.tensor(y_train, dtype=torch.float32)
-# y_val = torch.tensor(y_val, dtype=torch.float32)
-# y_test = torch.tensor(y_test, dtype=torch.float32)
 
 # Shuffle los datos (opcional si `train_test_split` ya los aleatoriza)
 indices = torch.randperm(len(x_train))
@@ -231,14 +244,6 @@ val_loader = DataLoader(val_ds, batch_size=32, shuffle=False)
 test_loader = DataLoader(test_ds, batch_size=32, shuffle=False)
 
 
-# plt.hist(y_train, bins=20, edgecolor='black', alpha=0.7)
-# plt.xlabel("SoH")
-# plt.ylabel("Frecuencia")
-# plt.title("Distribución de SoH en el dataset de entrenamiento")
-# plt.show()
-# plt.show()
-
-#x1_cont, x2_cont, y_cont = generar_pares_aleatorios(x_train, y_train, umbral_soh=0.02)
 
 # ##########################################################################
 # # PLoteo de los ciclos de carga del dataset completo
@@ -272,23 +277,6 @@ test_loader = DataLoader(test_ds, batch_size=32, shuffle=False)
 
 
 
-# Fake Dataset Generater
-# x_train = torch.randn(1024, 256, 23)    # [N, seq_len, features]
-# x_val = torch.randn(128, 256, 23)       # [N, seq_len, features]
-# x_test =  torch.randn(512, 256, 23)     # [N, seq_len, features]
-
-# y_train = torch.randint(0, 9, (1024, ))
-# y_val = torch.randint(0, 9, (128, ))
-# y_test = torch.randint(0, 9, (512, ))
-
-
-# train_ds = TensorDataset(x_train, y_train)
-# val_ds = TensorDataset(x_val, y_val)
-# test_ds = TensorDataset(x_test, y_test)
-
-# train_loader = DataLoader(train_ds, batch_size=128)
-# val_loader = DataLoader(val_ds, batch_size=128)
-# test_loader = DataLoader(test_ds, batch_size=128)
 
 #################################################################################################################3
 # Training
@@ -379,12 +367,12 @@ if export_csv == True:
 
 if train == True:
     # # training network Normal
-    clf.fit_normal(x_train, y_train, x_val, y_val, x_test, y_test,
-            {"train": train_loader,
-          "val": val_loader,
-          "test": test_loader},
-          epochs=80
-    )
+    # clf.fit_normal(x_train, y_train, x_val, y_val, x_test, y_test,
+    #         {"train": train_loader,
+    #       "val": val_loader,
+    #       "test": test_loader},
+    #       epochs=80
+    # )
 
     # #training network Improve
     # clf.fit_normal_improve(x_train, y_train, x_val, y_val, x_test, y_test,
@@ -403,12 +391,12 @@ if train == True:
     # )
 
     # training network NARX
-    # clf.fit_NARX_Transformer(x_train_narx, y_train_narx, x_val_narx, y_val_narx, x_test_narx, y_test_narx,
-    #             {"train_narx": train_loader_narx,
-    #         "val_narx": val_loader_narx,
-    #         "test_narx": test_loader_narx},
-    #         epochs=500
-    # )
+    clf.fit_NARX_Transformer(x_train_narx, y_train_narx, x_val_narx, y_val_narx, x_test_narx, y_test_narx,
+                {"train_narx": train_loader_narx,
+            "val_narx": val_loader_narx,
+            "test_narx": test_loader_narx},
+            epochs=500
+    )
 
 
 
@@ -430,10 +418,10 @@ if train == True:
     # # # # # clf.evaluate(test_loader)
     # # # #
     # # # # save
-    clf.save_to_file_normal("save_params/")
+    #clf.save_to_file_normal("save_params/")
     # clf.save_to_file_normal_improve("save_params/")
     #clf.save_to_file_siamese("save_params/")
-    #clf.save_to_file_Narx("save_params/")
+    clf.save_to_file_Narx("save_params/")
     # #
     # # #
     # # #
@@ -461,9 +449,9 @@ if train == True:
             return self.base_model(x_pair, cap_input)
 
 
-    modelo = SAnD(in_feature, seq_len, n_heads, factor, num_class, num_layers)
+    #modelo = SAnD(in_feature, seq_len, n_heads, factor, num_class, num_layers)
     # modelo = SAnDImprove(in_feature, seq_len, n_heads, factor, num_class, num_layers)
-    #modelo = NARX_Transformer(16,16, 16, 2, 1)
+    modelo = NARX_Transformer(16,16, 16, 2, 1)
     #modelo = SAnD_Embedding(in_feature, seq_len, n_heads, factor, num_class, num_layers)
     # # # # Verificar los atributos de modelo_siamese
     # print(modelo_siamese)
@@ -485,41 +473,41 @@ if train == True:
     # # if "hyperparameters" in checkpoint:  # Si guardaste los hiperparámetros
     # #     print(checkpoint["hyperparameters"])
     # checkpoint = torch.load("save_params/trained_model_normal_improve.pth", map_location="cpu")
-    checkpoint = torch.load("save_params/trained_model_normal.pth", map_location="cpu")
-    #checkpoint = torch.load("save_params/trained_model_narx.pth", map_location="cpu")
+    #checkpoint = torch.load("save_params/trained_model_normal.pth", map_location="cpu")
+    checkpoint = torch.load("save_params/trained_model_narx.pth", map_location="cpu")
     modelo.load_state_dict(checkpoint["model_state_dict"], strict=False)
     modelo.eval()
-    wrapped_model = WrappedModel(modelo)  # Envolver modelo con sigmoide
-    #wrapped_model = WrappedModel_NARX(modelo)  # Envolver modelo con sigmoide
+    #wrapped_model = WrappedModel(modelo)  # Envolver modelo con sigmoide
+    wrapped_model = WrappedModel_NARX(modelo)  # Envolver modelo con sigmoide
     # # #
     # # # # # Crear un dummy input (ajusta el tamaño según tu entrada real)
     # # # #
-    input_shape = (400, 3)
-    dummy_input = torch.randn(1, *input_shape)
+    #input_shape = (400, 3)
+    #dummy_input = torch.randn(1, *input_shape)
 
     # Dummy inputs (para NARX)
-    #dummy_x_pair = torch.randn(1, 2, 400, 3)
-    #dummy_cap_input = torch.randn(1, 1)
+    dummy_x_pair = torch.randn(1, 2, 400, 3)
+    dummy_cap_input = torch.randn(1, 1)
 
     # # # #
     # # # # # Exportar a ONNX
-    torch.onnx.export(modelo, dummy_input, "save_params/trained_model_normal.onnx", opset_version=13)
+    #torch.onnx.export(modelo, dummy_input, "save_params/trained_model_normal.onnx", opset_version=13)
     # torch.onnx.export(wrapped_model, dummy_input, "save_params/trained_model_normal_improve.onnx", opset_version=13)
     # # torch.onnx.export(modelo, dummy_input, "save_params/trained_model_normal_improve_old.onnx", opset_version=13)
     #torch.onnx.export(wrapped_model, dummy_input, "save_params/trained_model_narx.onnx", opset_version=17)
-    # torch.onnx.export(
-    #     wrapped_model,
-    #     (dummy_x_pair, dummy_cap_input),  # ahora son dos entradas
-    #     "save_params/trained_model_narx.onnx",
-    #     input_names=["x_pair", "cap_input"],
-    #     output_names=["soh_pred"],
-    #     opset_version=17,
-    #     dynamic_axes={
-    #         "x_pair": {0: "batch_size"},
-    #         "cap_input": {0: "batch_size"},
-    #         "soh_pred": {0: "batch_size"}
-    #     }
-    # )
+    torch.onnx.export(
+        wrapped_model,
+        (dummy_x_pair, dummy_cap_input),  # ahora son dos entradas
+        "save_params/trained_model_narx.onnx",
+        input_names=["x_pair", "cap_input"],
+        output_names=["soh_pred"],
+        opset_version=17,
+        dynamic_axes={
+            "x_pair": {0: "batch_size"},
+            "cap_input": {0: "batch_size"},
+            "soh_pred": {0: "batch_size"}
+        }
+    )
 
 
 
@@ -727,7 +715,7 @@ def realizar_inferencia_narx(x_test, y_test, cap_test, modo="onnx", modelo=None)
         #inference_model = Inference_SoH_Normal_Improve(modelo, input_features=3, seq_len=400, n_heads=1, factor=1, n_class=1, n_layers=8)
         inference_model = Inference_SoH_NARX(modelo, input_features=16, seq_len=16, n_heads=16, num_cycles = 2, num_preds=1)
         # inference_model = Inference_SoH_Siamese(modelo, input_features=3, seq_len=400, n_heads=32, factor=32, n_class=1, n_layers=4)
-        soh_predictions = inference_model.predict(test_loader_narx)
+        soh_predictions = inference_model.predict(val_loader_narx)
         #Inference SoH ###############################
 
 
@@ -737,7 +725,7 @@ def realizar_inferencia_narx(x_test, y_test, cap_test, modo="onnx", modelo=None)
         real_values = []
         pred_values = []
 
-        for idx in range(len(x_test_narx)):
+        for idx in range(len(x_val_narx)):
             pred = soh_predictions[0][idx]
             real = soh_predictions[1][idx]
 
@@ -790,9 +778,15 @@ def realizar_inferencia_narx(x_test, y_test, cap_test, modo="onnx", modelo=None)
 # 🔹 Ejemplo de uso
 if inference ==  True:
     modo = "pth"  # Cambia a "pth" para usar el modelo original
-    modelo ="save_params/trained_model_narx.pth"
+    model = torch.load("save_params/trained_model_narx.pt", weights_only=False)
+    # Extraer los pesos
+    state_dict = model.state_dict()
+    # Guardar solo el state_dict
+    torch.save({"model_state_dict": state_dict}, "save_params/trained_model_narx_new.pth")
+
+    modelo ="save_params/trained_model_narx_new.pth"
     #realizar_inferencia(x_test, y_test, test_loader, modo, modelo)
-    realizar_inferencia_narx(x_train_narx, y_train_narx, cap_train, modo, modelo)
+    realizar_inferencia_narx(x_test_narx, y_test_narx, cap_test, modo, modelo)
     #realizar_inferencia("save_params/trained_model_normal.pth")
 
 
