@@ -44,6 +44,7 @@ from sklearn.preprocessing import MinMaxScaler
 from sklearn.model_selection import train_test_split
 import torch
 from torch.utils.data import TensorDataset, DataLoader
+from torchinfo import summary
 ######################################## Introducimos la rama de NARX
 
 
@@ -173,16 +174,16 @@ labels=torch.from_numpy(np.array(labels)).type(torch.FloatTensor)
 x_pairs, cap_inputs, y_targets = create_cycle_triplets(data, labels)
 
 x_train_narx, x_temp_narx, cap_train, cap_temp, y_train_narx, y_temp_narx = train_test_split(
-    x_pairs, cap_inputs, y_targets, test_size=0.2, random_state=42)
+    x_pairs, cap_inputs, y_targets, test_size=0.2, random_state=42, shuffle=False)
 
 x_val_narx, x_test_narx, cap_val, cap_test, y_val_narx, y_test_narx = train_test_split(
-    x_temp_narx, cap_temp, y_temp_narx, test_size=0.5, random_state=42)
+    x_temp_narx, cap_temp, y_temp_narx, test_size=0.5, random_state=42, shuffle=False)
 
 train_ds_narx = TensorDataset(x_train_narx, cap_train, y_train_narx)
 val_ds_narx = TensorDataset(x_val_narx, cap_val, y_val_narx)
 test_ds_narx = TensorDataset(x_test_narx, cap_test, y_test_narx)
 
-train_loader_narx = DataLoader(train_ds_narx, batch_size=32, shuffle=True)
+train_loader_narx = DataLoader(train_ds_narx, batch_size=32, shuffle=False)
 val_loader_narx = DataLoader(val_ds_narx, batch_size=32, shuffle=False)
 test_loader_narx = DataLoader(test_ds_narx, batch_size=32, shuffle=False)
 
@@ -333,8 +334,8 @@ clf = NeuralNetworkClassifier(
     nn.MSELoss(),
     nn.L1Loss(),
     #nn.SmoothL1Loss(beta=0.1),  # Cambiar a SmoothL1Loss,
-    # optim.AdamW,optimizer_config={"lr": 1e-6, "betas": (0.9, 0.98), "eps": 4e-09, "weight_decay": 5e-4},
-    optim.AdamW,optimizer_config={"lr": 1e-6, "betas": (0.9, 0.96), "eps": 1e-08, "weight_decay": 1e-6},
+    optim.AdamW,optimizer_config={"lr": 1e-6, "betas": (0.9, 0.98), "eps": 4e-09, "weight_decay": 5e-4},
+    # optim.AdamW,optimizer_config={"lr": 1e-6, "betas": (0.9, 0.96), "eps": 1e-08, "weight_decay": 1e-6},
     # optim.SGD, optimizer_config={"lr":1e-6, "momentum": 0.9,"weight_decay": 1e-4},
     #experiment=Experiment("8mKGHiYeg2P7dZEFlvQv3PEzc")
     experiment = Experiment(api_key="Td3ICbNoK8hW14nwxZfp10SGN",
@@ -343,13 +344,28 @@ clf = NeuralNetworkClassifier(
 
 
 )
-inference = True
+
+
+##########calculo parámetros del modelo###############
+# def count_parameters(model):
+#     total = sum(p.numel() for p in model.parameters())
+#     trainable = sum(p.numel() for p in model.parameters() if p.requires_grad)
+#     return total, trainable
+#
+# model = NARX_Transformer(16, 16, 16, 2, 1)
+# total_params, trainable_params = count_parameters(model)
+# print(f"Total de parámetros: {total_params:,}")
+# print(f"Parámetros entrenables: {trainable_params:,}")
+##########calculo parámetros del modelo###############
+
+
+inference = False
 if inference == True:
     train = False
 elif inference == False:
     train = True
 
-export_csv = True
+export_csv = False
 if export_csv == True:
     inference = False
     train = False
@@ -357,11 +373,11 @@ if export_csv == True:
 
     #####save example to csv####################################################
     #save_example_to_csv(x_test, y_test, 2490, filename="save_params/ciclo_de_carga.csv")
-    save_example_to_csv_narx(x_train_narx, cap_train, y_train_narx, 1899, filename="save_params/ciclo_de_carga_narx_1899.csv")
+    save_example_to_csv_narx(x_train_narx, cap_train, y_train_narx, 100, filename="save_params/ciclo_de_carga_narx_100.csv")
     #####save example to csv####################################################
 
 
-if train ==  True:
+if train == True:
     # # training network Normal
     # clf.fit_normal(x_train, y_train, x_val, y_val, x_test, y_test,
     #         {"train": train_loader,
@@ -391,7 +407,7 @@ if train ==  True:
                 {"train_narx": train_loader_narx,
             "val_narx": val_loader_narx,
             "test_narx": test_loader_narx},
-            epochs=200
+            epochs=500
     )
 
 
