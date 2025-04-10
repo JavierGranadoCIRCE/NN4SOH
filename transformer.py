@@ -164,15 +164,15 @@ labels=torch.from_numpy(np.array(labels)).type(torch.FloatTensor)
 
 data_np = data.numpy() if isinstance(data, torch.Tensor) else data
 
-# # Escalado canal por canal entre -1 y 1
-# for i in range(3):
-#     scaler = MinMaxScaler(feature_range=(-1, 1))
-#     scaled = scaler.fit_transform(data_np[:, :, i].reshape(-1, 1))
-#     data_np[:, :, i] = scaled.reshape(data_np.shape[0], data_np.shape[1])
-#
-# # Volvemos a convertir a tensor
-# data = torch.from_numpy(data_np).float()
+#################################################### Escalado canal por canal entre -1 y 1
+for i in range(3):
+    scaler = MinMaxScaler(feature_range=(-1, 1))
+    scaled = scaler.fit_transform(data_np[:, :, i].reshape(-1, 1))
+    data_np[:, :, i] = scaled.reshape(data_np.shape[0], data_np.shape[1])
 
+# Volvemos a convertir a tensor
+data = torch.from_numpy(data_np).float()
+#################################################### Escalado canal por canal entre -1 y 1
 
 
 
@@ -259,32 +259,32 @@ val_loader = DataLoader(val_ds, batch_size=32, shuffle=False)
 test_loader = DataLoader(test_ds, batch_size=32, shuffle=False)
 
 
-##########################################################################
-# PLoteo de los ciclos de carga del dataset completo de NARX
-
-variables = ["Tensión (V)", "Corriente (A)", "Temperatura (°C)"]
-colores = ["b", "r", "g"]  # Azul, rojo y verde
-
-# Recorrer todos los ejemplos del dataset
-for sample_idx in range(len(train_dataset)):
-    x_train, y_train = train_dataset[sample_idx]  # x_train: (num_cycles, 400, 3), y_train: (num_cycles,)
-
-    # Recorrer los ciclos de carga dentro de este ejemplo
-    for i in range(x_train.shape[0]):
-        plt.figure(figsize=(10, 5))
-        for j in range(3):
-            plt.plot(x_train[i, :, j], color=colores[j], label=variables[j])
-
-        soh_value = y_train[i]
-        plt.xlabel("Tiempo (puntos de muestreo)")
-        plt.ylabel("Valor")
-        plt.title(f"Ejemplo {sample_idx+1}, Ciclo {i+1} - SoH: {soh_value:.2f}%")
-        plt.legend()
-        plt.grid()
-        plt.show()
-        input("Presiona Enter para ver el siguiente ciclo...")
-        plt.close()
-##########################################################################
+# ##########################################################################
+# # PLoteo de los ciclos de carga del dataset completo de NARX
+#
+# variables = ["Tensión (V)", "Corriente (A)", "Temperatura (°C)"]
+# colores = ["b", "r", "g"]  # Azul, rojo y verde
+#
+# # Recorrer todos los ejemplos del dataset
+# for sample_idx in range(len(train_dataset)):
+#     x_train, y_train = train_dataset[sample_idx]  # x_train: (num_cycles, 400, 3), y_train: (num_cycles,)
+#
+#     # Recorrer los ciclos de carga dentro de este ejemplo
+#     for i in range(x_train.shape[0]):
+#         plt.figure(figsize=(10, 5))
+#         for j in range(3):
+#             plt.plot(x_train[i, :, j], color=colores[j], label=variables[j])
+#
+#         soh_value = y_train[i]
+#         plt.xlabel("Tiempo (puntos de muestreo)")
+#         plt.ylabel("Valor")
+#         plt.title(f"Ejemplo {sample_idx+1}, Ciclo {i+1} - SoH: {soh_value:.2f}%")
+#         plt.legend()
+#         plt.grid()
+#         plt.show()
+#         input("Presiona Enter para ver el siguiente ciclo...")
+#         plt.close()
+# ##########################################################################
 
 
 
@@ -391,7 +391,7 @@ clf = NeuralNetworkClassifier(
 ##########calculo parámetros del modelo###############
 
 
-inference = True
+inference = False
 if inference == True:
     train = False
 elif inference == False:
@@ -419,13 +419,13 @@ if train == True:
     # )
 
     # #training network Improve
-    # clf.fit_normal_improve(x_train, y_train, x_val, y_val, x_test, y_test,
-    #          {"train": train_loader,
-    #       "val": val_loader,
-    #       "test": test_loader},
-    #       epochs=80
-    # )
-    # # # #
+    clf.fit_normal_improve(x_train, y_train, x_val, y_val, x_test, y_test,
+             {"train": train_loader,
+          "val": val_loader,
+          "test": test_loader},
+          epochs=80
+    )
+    # # #
     # training network Siamese
     # clf.fit_siamese(x_train, y_train, x_val, y_val, x_test, y_test,
     #             {"train": train_loader,
@@ -435,12 +435,12 @@ if train == True:
     # )
 
     # training network NARX
-    clf.fit_NARX_Transformer(x_train_narx, y_train_narx, x_val_narx, y_val_narx, x_test_narx, y_test_narx,
-                {"train_narx": train_loader_narx,
-            "val_narx": val_loader_narx,
-            "test_narx": test_loader_narx},
-            epochs=500
-    )
+    # clf.fit_NARX_Transformer(x_train_narx, y_train_narx, x_val_narx, y_val_narx, x_test_narx, y_test_narx,
+    #             {"train_narx": train_loader_narx,
+    #         "val_narx": val_loader_narx,
+    #         "test_narx": test_loader_narx},
+    #         epochs=500
+    # )
 
 
 
@@ -463,9 +463,9 @@ if train == True:
     # # # #
     # # # # save
     #clf.save_to_file_normal("save_params/")
-    # clf.save_to_file_normal_improve("save_params/")
+    clf.save_to_file_normal_improve("save_params/")
     #clf.save_to_file_siamese("save_params/")
-    clf.save_to_file_Narx("save_params/")
+    #clf.save_to_file_Narx("save_params/")
     # #
     # # #
     # # #
@@ -494,8 +494,8 @@ if train == True:
 
 
     #modelo = SAnD(in_feature, seq_len, n_heads, factor, num_class, num_layers)
-    # modelo = SAnDImprove(in_feature, seq_len, n_heads, factor, num_class, num_layers)
-    modelo = NARX_Transformer(16,16, 16, 2, 1)
+    modelo = SAnDImprove(in_feature, seq_len, n_heads, factor, num_class, num_layers)
+    #modelo = NARX_Transformer(16,16, 16, 2, 1)
     #modelo = SAnD_Embedding(in_feature, seq_len, n_heads, factor, num_class, num_layers)
     # # # # Verificar los atributos de modelo_siamese
     # print(modelo_siamese)
@@ -516,42 +516,42 @@ if train == True:
     # # print(checkpoint.keys())  # Ver qué hay dentro
     # # if "hyperparameters" in checkpoint:  # Si guardaste los hiperparámetros
     # #     print(checkpoint["hyperparameters"])
-    # checkpoint = torch.load("save_params/trained_model_normal_improve.pth", map_location="cpu")
+    checkpoint = torch.load("save_params/trained_model_normal_improve.pth", map_location="cpu")
     #checkpoint = torch.load("save_params/trained_model_normal.pth", map_location="cpu")
-    checkpoint = torch.load("save_params/trained_model_narx.pth", map_location="cpu")
+    #checkpoint = torch.load("save_params/trained_model_narx.pth", map_location="cpu")
     modelo.load_state_dict(checkpoint["model_state_dict"], strict=False)
     modelo.eval()
-    #wrapped_model = WrappedModel(modelo)  # Envolver modelo con sigmoide
-    wrapped_model = WrappedModel_NARX(modelo)  # Envolver modelo con sigmoide
+    wrapped_model = WrappedModel(modelo)  # Envolver modelo con sigmoide
+    #wrapped_model = WrappedModel_NARX(modelo)  # Envolver modelo con sigmoide
     # # #
     # # # # # Crear un dummy input (ajusta el tamaño según tu entrada real)
     # # # #
-    #input_shape = (400, 3)
-    #dummy_input = torch.randn(1, *input_shape)
+    input_shape = (400, 3)
+    dummy_input = torch.randn(1, *input_shape)
 
     # Dummy inputs (para NARX)
-    dummy_x_pair = torch.randn(1, 2, 400, 3)
-    dummy_cap_input = torch.randn(1, 1)
+    # dummy_x_pair = torch.randn(1, 2, 400, 3)
+    # dummy_cap_input = torch.randn(1, 1)
 
     # # # #
     # # # # # Exportar a ONNX
     #torch.onnx.export(modelo, dummy_input, "save_params/trained_model_normal.onnx", opset_version=13)
-    # torch.onnx.export(wrapped_model, dummy_input, "save_params/trained_model_normal_improve.onnx", opset_version=13)
+    torch.onnx.export(wrapped_model, dummy_input, "save_params/trained_model_normal_improve.onnx", opset_version=13)
     # # torch.onnx.export(modelo, dummy_input, "save_params/trained_model_normal_improve_old.onnx", opset_version=13)
     #torch.onnx.export(wrapped_model, dummy_input, "save_params/trained_model_narx.onnx", opset_version=17)
-    torch.onnx.export(
-        wrapped_model,
-        (dummy_x_pair, dummy_cap_input),  # ahora son dos entradas
-        "save_params/trained_model_narx.onnx",
-        input_names=["x_pair", "cap_input"],
-        output_names=["soh_pred"],
-        opset_version=17,
-        dynamic_axes={
-            "x_pair": {0: "batch_size"},
-            "cap_input": {0: "batch_size"},
-            "soh_pred": {0: "batch_size"}
-        }
-    )
+    # torch.onnx.export(
+    #     wrapped_model,
+    #     (dummy_x_pair, dummy_cap_input),  # ahora son dos entradas
+    #     "save_params/trained_model_narx.onnx",
+    #     input_names=["x_pair", "cap_input"],
+    #     output_names=["soh_pred"],
+    #     opset_version=17,
+    #     dynamic_axes={
+    #         "x_pair": {0: "batch_size"},
+    #         "cap_input": {0: "batch_size"},
+    #         "soh_pred": {0: "batch_size"}
+    #     }
+    # )
 
 
 
@@ -634,8 +634,8 @@ def realizar_inferencia(x_test, y_test, test_loader, modo="onnx", modelo=None):
         #         etiquetas_reales.append(real)
 
         #Inference SoH Normal ###############################
-        inference_model = Inference_SoH_Normal("save_params/trained_model_normal.pth", input_features=3, seq_len=400, n_heads=16, factor=1, n_class=1, n_layers=8)
-        #inference_model = Inference_SoH_Normal_Improve(modelo, input_features=3, seq_len=400, n_heads=1, factor=1, n_class=1, n_layers=8)
+        #inference_model = Inference_SoH_Normal("save_params/trained_model_normal.pth", input_features=3, seq_len=400, n_heads=16, factor=1, n_class=1, n_layers=8)
+        inference_model = Inference_SoH_Normal_Improve(modelo, input_features=3, seq_len=400, n_heads=1, factor=1, n_class=1, n_layers=8)
         #inference_model = Inference_SoH_NARX(modelo, input_features=3, seq_len=400, n_heads=1, num_cycles = 2, num_preds=1)
         # inference_model = Inference_SoH_Siamese(modelo, input_features=3, seq_len=400, n_heads=32, factor=32, n_class=1, n_layers=4)
         soh_predictions = inference_model.predict(test_loader)
@@ -822,16 +822,15 @@ def realizar_inferencia_narx(x_test, y_test, cap_test, modo="onnx", modelo=None)
 # 🔹 Ejemplo de uso
 if inference ==  True:
     modo = "pth"  # Cambia a "pth" para usar el modelo original
-    model = torch.load("save_params/trained_model_narx.pt", weights_only=False)
-    # Extraer los pesos
-    state_dict = model.state_dict()
-    # Guardar solo el state_dict
-    torch.save({"model_state_dict": state_dict}, "save_params/trained_model_narx_new.pth")
 
-    modelo ="save_params/trained_model_narx_new.pth"
-
-    #realizar_inferencia(x_test, y_test, test_loader, modo, modelo)
-    realizar_inferencia_narx(x_test_narx, y_test_narx, cap_test, modo, modelo)
+    # model = torch.load("save_params/trained_model_narx.pt", weights_only=False)
+    # # Extraer los pesos
+    # state_dict = model.state_dict()
+    # # Guardar solo el state_dict
+    # torch.save({"model_state_dict": state_dict}, "save_params/trained_model_narx_new.pth")
+    modelo ="save_params/trained_model_normal_improve.pth"
+    realizar_inferencia(x_test, y_test, test_loader, modo, modelo)
+    #realizar_inferencia_narx(x_test_narx, y_test_narx, cap_test, modo, modelo)
     #realizar_inferencia("save_params/trained_model_normal.pth")
 
 

@@ -710,18 +710,18 @@ class NeuralNetworkClassifier:
                 # for data in loader["train_narx"]:
                 #     print(data)
                 #     break  # Para ver solo el primer lote
-                for x_pair, cap_input, y_target in loader["train_narx"]:
-                    b_size = y_target.shape[0]
-                    total_samples += y_target.shape[0]
-                    x_pair = x_pair.to(self.device)  # (batch_size, 2, 400, 3)
-                    cap_input = cap_input.to(self.device)  # (batch_size, 1)
-                    y_target = y_target.to(self.device)    # (batch_size)
+                for x_train_narx, cap_train, y_train_narx in loader["train_narx"]:
+                    b_size = y_train_narx.shape[0]
+                    total_samples += y_train_narx.shape[0]
+                    x_train_narx = x_train_narx.to(self.device)  # (batch_size, 2, 400, 3)
+                    cap_train = cap_train.to(self.device)  # (batch_size, 1)
+                    y_train_narx = y_train_narx.to(self.device)    # (batch_size)
 
                     pbar.set_description("\033[36m" + "Training" + "\033[0m" + " - Epochs: {:03d}/{:03d}".format(epoch+1, epochs))
                     pbar.update(b_size)
                     self.optimizer_narx.zero_grad()
-                    train_output = self.model_narx(x_pair, cap_input)
-                    train_loss = self.criterion_narx(train_output, y_target.unsqueeze(1))
+                    train_output = self.model_narx(x_train_narx, cap_train)
+                    train_loss = self.criterion_narx(train_output, y_train_narx.unsqueeze(1))
                     train_loss.backward()
                     torch.nn.utils.clip_grad_norm_(self.model_narx.parameters(), max_norm=1.0)
                     self.optimizer_narx.step()
