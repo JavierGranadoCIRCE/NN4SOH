@@ -32,6 +32,7 @@ import onnxruntime as ort
 import numpy as np
 import yaml
 from dataset import load_NASA
+from sklearn.preprocessing import MinMaxScaler
 
 from SAnD.core.modules import ContrastiveLoss
 
@@ -161,6 +162,20 @@ print(data.shape)
 data=torch.from_numpy(data).type(torch.FloatTensor)
 labels=torch.from_numpy(np.array(labels)).type(torch.FloatTensor)
 
+data_np = data.numpy() if isinstance(data, torch.Tensor) else data
+
+# # Escalado canal por canal entre -1 y 1
+# for i in range(3):
+#     scaler = MinMaxScaler(feature_range=(-1, 1))
+#     scaled = scaler.fit_transform(data_np[:, :, i].reshape(-1, 1))
+#     data_np[:, :, i] = scaled.reshape(data_np.shape[0], data_np.shape[1])
+#
+# # Volvemos a convertir a tensor
+# data = torch.from_numpy(data_np).float()
+
+
+
+
 # Escalar etiquetas
 # label_scaler = MinMaxScaler()
 # # labels = label_scaler.fit_transform(np.array(labels).reshape(-1, 1)).flatten()
@@ -244,12 +259,41 @@ val_loader = DataLoader(val_ds, batch_size=32, shuffle=False)
 test_loader = DataLoader(test_ds, batch_size=32, shuffle=False)
 
 
+##########################################################################
+# PLoteo de los ciclos de carga del dataset completo de NARX
 
-# ##########################################################################
-# # PLoteo de los ciclos de carga del dataset completo
-#
-#
-# # Etiquetas de las variables
+variables = ["Tensión (V)", "Corriente (A)", "Temperatura (°C)"]
+colores = ["b", "r", "g"]  # Azul, rojo y verde
+
+# Recorrer todos los ejemplos del dataset
+for sample_idx in range(len(train_dataset)):
+    x_train, y_train = train_dataset[sample_idx]  # x_train: (num_cycles, 400, 3), y_train: (num_cycles,)
+
+    # Recorrer los ciclos de carga dentro de este ejemplo
+    for i in range(x_train.shape[0]):
+        plt.figure(figsize=(10, 5))
+        for j in range(3):
+            plt.plot(x_train[i, :, j], color=colores[j], label=variables[j])
+
+        soh_value = y_train[i]
+        plt.xlabel("Tiempo (puntos de muestreo)")
+        plt.ylabel("Valor")
+        plt.title(f"Ejemplo {sample_idx+1}, Ciclo {i+1} - SoH: {soh_value:.2f}%")
+        plt.legend()
+        plt.grid()
+        plt.show()
+        input("Presiona Enter para ver el siguiente ciclo...")
+        plt.close()
+##########################################################################
+
+
+
+
+# # ##########################################################################
+# # # PLoteo de los ciclos de carga del dataset completo de NN4SOH
+# #
+# #
+# # # Etiquetas de las variables
 # variables = ["Tensión (V)", "Corriente (A)", "Temperatura (°C)"]
 # colores = ["b", "r", "g"]  # Azul, rojo y verde
 #
@@ -272,8 +316,8 @@ test_loader = DataLoader(test_ds, batch_size=32, shuffle=False)
 #
 #     input("Presiona Enter para ver el siguiente ciclo...")  # Espera antes de mostrar el siguiente gráfico
 #     plt.close()
-# # PLoteo de los coclos de carga del dataset completo
-# ##########################################################################
+# # # PLoteo de los coclos de carga del dataset completo
+# # ##########################################################################
 
 
 
@@ -715,7 +759,7 @@ def realizar_inferencia_narx(x_test, y_test, cap_test, modo="onnx", modelo=None)
         #inference_model = Inference_SoH_Normal_Improve(modelo, input_features=3, seq_len=400, n_heads=1, factor=1, n_class=1, n_layers=8)
         inference_model = Inference_SoH_NARX(modelo, input_features=16, seq_len=16, n_heads=16, num_cycles = 2, num_preds=1)
         # inference_model = Inference_SoH_Siamese(modelo, input_features=3, seq_len=400, n_heads=32, factor=32, n_class=1, n_layers=4)
-        soh_predictions = inference_model.predict(val_loader_narx)
+        soh_predictions = inference_model.predict(test_loader_narx)
         #Inference SoH ###############################
 
 
@@ -725,7 +769,7 @@ def realizar_inferencia_narx(x_test, y_test, cap_test, modo="onnx", modelo=None)
         real_values = []
         pred_values = []
 
-        for idx in range(len(x_val_narx)):
+        for idx in range(len(x_test_narx)):
             pred = soh_predictions[0][idx]
             real = soh_predictions[1][idx]
 
@@ -785,6 +829,7 @@ if inference ==  True:
     torch.save({"model_state_dict": state_dict}, "save_params/trained_model_narx_new.pth")
 
     modelo ="save_params/trained_model_narx_new.pth"
+
     #realizar_inferencia(x_test, y_test, test_loader, modo, modelo)
     realizar_inferencia_narx(x_test_narx, y_test_narx, cap_test, modo, modelo)
     #realizar_inferencia("save_params/trained_model_normal.pth")
