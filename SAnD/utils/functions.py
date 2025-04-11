@@ -111,6 +111,9 @@ def create_cycle_triplets(data, labels):
     y_targets = torch.tensor(y_targets, dtype=torch.float32)
     return x_pairs, capacities, y_targets
 
+
+
+
 def save_example_to_csv(x_train, y_train, example_idx, filename="ciclo_de_carga.csv"):
     """
     Guarda un ejemplo de x_train con su correspondiente etiqueta de y_train en un archivo CSV.

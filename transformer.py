@@ -227,6 +227,37 @@ train_loader_narx = DataLoader(train_ds_narx, batch_size=32, shuffle=False)
 val_loader_narx = DataLoader(val_ds_narx, batch_size=32, shuffle=False)
 test_loader_narx = DataLoader(test_ds_narx, batch_size=32, shuffle=False)
 
+##########################################################################################################
+#ejemplos de test con el ciclo historico fijo #0
+# Seleccionamos el histórico fijo: por ejemplo el ciclo 0 del train
+
+historical_cycle = x_test_narx[10][0]  # x_test_narx[i][0] es el ciclo anterior en el par (2, 400, 3)
+historical_soh = cap_test[10]         # SoH asociado al histórico fijo
+
+# Creamos nuevos pares con ese histórico fijo combinado con todos los ciclos de test
+x_pairs_fixed = []
+cap_inputs_fixed = []
+y_targets_fixed = []
+
+for i in range(len(x_test_narx)):
+    current_cycle = x_test_narx[i][1]  # ciclo actual del par
+    soh_target = y_test_narx[i]       # SoH objetivo de este ciclo
+
+    x_pair = torch.stack([historical_cycle, current_cycle])  # (2, 400, 3)
+    x_pairs_fixed.append(x_pair)
+    cap_inputs_fixed.append(historical_soh)  # mismo SoH fijo como entrada
+    y_targets_fixed.append(soh_target)
+
+# Convertimos a tensores
+x_pairs_fixed = torch.stack(x_pairs_fixed)
+cap_inputs_fixed = torch.stack(cap_inputs_fixed).unsqueeze(1)
+y_targets_fixed = torch.stack(y_targets_fixed)
+
+# Creamos el nuevo DataLoader con histórico fijo
+fixed_test_ds = TensorDataset(x_pairs_fixed, cap_inputs_fixed, y_targets_fixed)
+fixed_test_loader = DataLoader(fixed_test_ds, batch_size=32, shuffle=False)
+##########################################################################################################
+
 
 ##########################################################################################################
 #Dataloader para NN4SOH
@@ -266,8 +297,8 @@ test_loader = DataLoader(test_ds, batch_size=32, shuffle=False)
 # colores = ["b", "r", "g"]  # Azul, rojo y verde
 #
 # # Recorrer todos los ejemplos del dataset
-# for sample_idx in range(len(train_dataset)):
-#     x_train, y_train = train_dataset[sample_idx]  # x_train: (num_cycles, 400, 3), y_train: (num_cycles,)
+# for sample_idx in range(len(fixed_test_ds)):
+#     x_train, cap_inputs_fixed, y_train = fixed_test_ds[sample_idx]  # x_train: (num_cycles, 400, 3), y_train: (num_cycles,)
 #
 #     # Recorrer los ciclos de carga dentro de este ejemplo
 #     for i in range(x_train.shape[0]):
@@ -275,7 +306,7 @@ test_loader = DataLoader(test_ds, batch_size=32, shuffle=False)
 #         for j in range(3):
 #             plt.plot(x_train[i, :, j], color=colores[j], label=variables[j])
 #
-#         soh_value = y_train[i]
+#         soh_value = y_train.item()
 #         plt.xlabel("Tiempo (puntos de muestreo)")
 #         plt.ylabel("Valor")
 #         plt.title(f"Ejemplo {sample_idx+1}, Ciclo {i+1} - SoH: {soh_value:.2f}%")
@@ -405,7 +436,7 @@ if export_csv == True:
 
     #####save example to csv####################################################
     #save_example_to_csv(x_test, y_test, 2490, filename="save_params/ciclo_de_carga.csv")
-    save_example_to_csv_narx(x_train_narx, cap_train, y_train_narx, 100, filename="save_params/ciclo_de_carga_narx_100.csv")
+    save_example_to_csv_narx(x_test_narx, cap_test, y_test_narx, 8, filename="save_params/ciclo_de_carga_narx_8.csv")
     #####save example to csv####################################################
 
 
@@ -831,6 +862,7 @@ if inference ==  True:
     modelo ="save_params/trained_model_narx.pth"
     #realizar_inferencia(x_test, y_test, test_loader, modo, modelo)
     realizar_inferencia_narx(x_test_narx, y_test_narx, cap_test, modo, modelo)
+    realizar_inferencia_narx(x_pairs_fixed, cap_inputs_fixed, y_targets_fixed, modo, modelo)
     #realizar_inferencia("save_params/trained_model_normal.pth")
 
 
