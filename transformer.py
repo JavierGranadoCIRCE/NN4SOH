@@ -290,15 +290,44 @@ val_loader = DataLoader(val_ds, batch_size=32, shuffle=False)
 test_loader = DataLoader(test_ds, batch_size=32, shuffle=False)
 
 
+##########################################################################
+# PLoteo de los ciclos de carga del dataset completo de NARX
+
+variables = ["Tensión (V)", "Corriente (A)", "Temperatura (°C)"]
+colores = ["b", "r", "g"]  # Azul, rojo y verde
+
+# Recorrer todos los ejemplos del dataset
+for sample_idx in range(len(val_ds_narx)):
+    x_train, cap_inputs_fixed, y_train = val_ds_narx[sample_idx]  # x_train: (num_cycles, 400, 3), y_train: (num_cycles,)
+
+    # Recorrer los ciclos de carga dentro de este ejemplo
+    for i in range(x_train.shape[0]):
+        plt.figure(figsize=(10, 5))
+        for j in range(3):
+            plt.plot(x_train[i, :, j], color=colores[j], label=variables[j])
+
+        soh_value = y_train.item()
+        plt.xlabel("Tiempo (puntos de muestreo)")
+        plt.ylabel("Valor")
+        plt.title(f"Ejemplo {sample_idx+1}, Ciclo {i+1} - SoH: {soh_value:.2f}%")
+        plt.legend()
+        plt.grid()
+        plt.show()
+        input("Presiona Enter para ver el siguiente ciclo...")
+        plt.close()
+##########################################################################
+
+
+
 # ##########################################################################
-# # PLoteo de los ciclos de carga del dataset completo de NARX
+# # PLoteo de los ciclos de carga del dataset completo de NN4SOH adaptado a NARX
 #
 # variables = ["Tensión (V)", "Corriente (A)", "Temperatura (°C)"]
 # colores = ["b", "r", "g"]  # Azul, rojo y verde
 #
 # # Recorrer todos los ejemplos del dataset
-# for sample_idx in range(len(fixed_test_ds)):
-#     x_train, cap_inputs_fixed, y_train = fixed_test_ds[sample_idx]  # x_train: (num_cycles, 400, 3), y_train: (num_cycles,)
+# for sample_idx in range(len(train_dataset)):
+#     x_train, y_train = train_dataset[sample_idx]  # x_train: (num_cycles, 400, 3), y_train: (num_cycles,)
 #
 #     # Recorrer los ciclos de carga dentro de este ejemplo
 #     for i in range(x_train.shape[0]):
@@ -306,7 +335,7 @@ test_loader = DataLoader(test_ds, batch_size=32, shuffle=False)
 #         for j in range(3):
 #             plt.plot(x_train[i, :, j], color=colores[j], label=variables[j])
 #
-#         soh_value = y_train.item()
+#         soh_value = y_train[i]
 #         plt.xlabel("Tiempo (puntos de muestreo)")
 #         plt.ylabel("Valor")
 #         plt.title(f"Ejemplo {sample_idx+1}, Ciclo {i+1} - SoH: {soh_value:.2f}%")
@@ -316,7 +345,6 @@ test_loader = DataLoader(test_ds, batch_size=32, shuffle=False)
 #         input("Presiona Enter para ver el siguiente ciclo...")
 #         plt.close()
 # ##########################################################################
-
 
 
 
