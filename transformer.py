@@ -213,6 +213,10 @@ test_dataloader  = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=True)
 
 x_pairs, cap_inputs, y_targets = create_cycle_triplets(data, labels)
 
+###########################################################
+# Mantener solo las dos primeras variables: V (0), I (1)
+x_pairs = x_pairs[:, :, :, :2]  # Deja solo V e I, elimina Tª (índice 2)
+################################################################
 x_train_narx, x_temp_narx, cap_train, cap_temp, y_train_narx, y_temp_narx = train_test_split(
     x_pairs, cap_inputs, y_targets, test_size=0.2, random_state=42, shuffle=False)
 
@@ -290,32 +294,32 @@ val_loader = DataLoader(val_ds, batch_size=32, shuffle=False)
 test_loader = DataLoader(test_ds, batch_size=32, shuffle=False)
 
 
-##########################################################################
-# PLoteo de los ciclos de carga del dataset completo de NARX
-
-variables = ["Tensión (V)", "Corriente (A)", "Temperatura (°C)"]
-colores = ["b", "r", "g"]  # Azul, rojo y verde
-
-# Recorrer todos los ejemplos del dataset
-for sample_idx in range(len(val_ds_narx)):
-    x_train, cap_inputs_fixed, y_train = val_ds_narx[sample_idx]  # x_train: (num_cycles, 400, 3), y_train: (num_cycles,)
-
-    # Recorrer los ciclos de carga dentro de este ejemplo
-    for i in range(x_train.shape[0]):
-        plt.figure(figsize=(10, 5))
-        for j in range(3):
-            plt.plot(x_train[i, :, j], color=colores[j], label=variables[j])
-
-        soh_value = y_train.item()
-        plt.xlabel("Tiempo (puntos de muestreo)")
-        plt.ylabel("Valor")
-        plt.title(f"Ejemplo {sample_idx+1}, Ciclo {i+1} - SoH: {soh_value:.2f}%")
-        plt.legend()
-        plt.grid()
-        plt.show()
-        input("Presiona Enter para ver el siguiente ciclo...")
-        plt.close()
-##########################################################################
+# ##########################################################################
+# # PLoteo de los ciclos de carga del dataset completo de NARX
+#
+# variables = ["Tensión (V)", "Corriente (A)", "Temperatura (°C)"]
+# colores = ["b", "r", "g"]  # Azul, rojo y verde
+#
+# # Recorrer todos los ejemplos del dataset
+# for sample_idx in range(len(val_ds_narx)):
+#     x_train, cap_inputs_fixed, y_train = val_ds_narx[sample_idx]  # x_train: (num_cycles, 400, 3), y_train: (num_cycles,)
+#
+#     # Recorrer los ciclos de carga dentro de este ejemplo
+#     for i in range(x_train.shape[0]):
+#         plt.figure(figsize=(10, 5))
+#         for j in range(3):
+#             plt.plot(x_train[i, :, j], color=colores[j], label=variables[j])
+#
+#         soh_value = y_train.item()
+#         plt.xlabel("Tiempo (puntos de muestreo)")
+#         plt.ylabel("Valor")
+#         plt.title(f"Ejemplo {sample_idx+1}, Ciclo {i+1} - SoH: {soh_value:.2f}%")
+#         plt.legend()
+#         plt.grid()
+#         plt.show()
+#         input("Presiona Enter para ver el siguiente ciclo...")
+#         plt.close()
+# ##########################################################################
 
 
 
@@ -450,11 +454,13 @@ clf = NeuralNetworkClassifier(
 ##########calculo parámetros del modelo###############
 
 
-inference = True
+inference = False
 if inference == True:
     train = False
 elif inference == False:
     train = True
+    torch.cuda.empty_cache()
+
 
 export_csv = False
 if export_csv == True:
