@@ -454,7 +454,7 @@ clf = NeuralNetworkClassifier(
 ##########calculo parámetros del modelo###############
 
 
-inference = False
+inference = True
 if inference == True:
     train = False
 elif inference == False:
@@ -560,7 +560,7 @@ if train == True:
 
     #modelo = SAnD(in_feature, seq_len, n_heads, factor, num_class, num_layers)
     #modelo = SAnDImprove(in_feature, seq_len, n_heads, factor, num_class, num_layers)
-    modelo = NARX_Transformer(128,128, 128, 2, 1)
+    modelo = NARX_Transformer(64,64, 64, 2, 1)
     #modelo = SAnD_Embedding(in_feature, seq_len, n_heads, factor, num_class, num_layers)
     # # # # Verificar los atributos de modelo_siamese
     # print(modelo_siamese)
@@ -822,7 +822,7 @@ def realizar_inferencia_narx(x_test, y_test, cap_test, modo="onnx", modelo=None)
         #Inference SoH Normal ###############################
         # inference_model = Inference_SoH_Normal("save_params/trained_model_normal.pth", input_features=3, seq_len=400, n_heads=32, factor=32, n_class=1, n_layers=4)
         #inference_model = Inference_SoH_Normal_Improve(modelo, input_features=3, seq_len=400, n_heads=1, factor=1, n_class=1, n_layers=8)
-        inference_model = Inference_SoH_NARX(modelo, input_features=128, seq_len=128, n_heads=128, num_cycles = 2, num_preds=1)
+        inference_model = Inference_SoH_NARX(modelo, input_features=64, seq_len=64, n_heads=64, num_cycles = 2, num_preds=1)
         # inference_model = Inference_SoH_Siamese(modelo, input_features=3, seq_len=400, n_heads=32, factor=32, n_class=1, n_layers=4)
         soh_predictions = inference_model.predict(test_loader_narx)
         #Inference SoH ###############################
@@ -895,7 +895,7 @@ if inference ==  True:
     # torch.save({"model_state_dict": state_dict}, "save_params/trained_model_narx_new.pth")
     modelo ="save_params/trained_model_narx.pth"
     #realizar_inferencia(x_test, y_test, test_loader, modo, modelo)
-    realizar_inferencia_narx(x_test_narx, y_test_narx, cap_test, modo, modelo)
+    #realizar_inferencia_narx(x_test_narx, y_test_narx, cap_test, modo, modelo)
     realizar_inferencia_narx(x_pairs_fixed, cap_inputs_fixed, y_targets_fixed, modo, modelo)
     #realizar_inferencia("save_params/trained_model_normal.pth")
 

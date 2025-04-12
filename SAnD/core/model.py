@@ -207,10 +207,6 @@ class NARX_Transformer(nn.Module):
 
         output_cap = self.final_linear_layer(decoded_data)
 
-        print("Input shape:", my_data.shape)
-        print("After conv1:", self.conv_layer(my_data).shape)
-        print("After conv2:", embedded_data.shape)
-
         return output_cap
 
     def pred_sequence(self, my_data, capacity):
