@@ -201,7 +201,9 @@ class NARX_Transformer(nn.Module):
         encoded_data = self.encoder_layer(embedded_data)
 
         tgt = self.cap_linear_layer(capacity)
-        tgt = tgt.unsqueeze(1)
+        #tgt = tgt.unsqueeze(2)
+        #tgt = tgt.unsqueeze(1)
+        tgt = tgt.expand(-1, encoded_data.shape[1], -1)  # Expandir a (batch_size, 800, feature_dim
         decoded_data = self.decoder_layer(tgt, encoded_data)
         decoded_data = decoded_data.squeeze(1)
 

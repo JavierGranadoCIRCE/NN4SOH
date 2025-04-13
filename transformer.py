@@ -253,13 +253,58 @@ for i in range(len(x_test_narx)):
     y_targets_fixed.append(soh_target)
 
 # Convertimos a tensores
-x_pairs_fixed = torch.stack(x_pairs_fixed)
-cap_inputs_fixed = torch.stack(cap_inputs_fixed).unsqueeze(1)
-y_targets_fixed = torch.stack(y_targets_fixed)
+x_pairs_fixed_test = torch.stack(x_pairs_fixed)
+cap_inputs_fixed_test = torch.stack(cap_inputs_fixed).unsqueeze(1)
+y_targets_fixed_test = torch.stack(y_targets_fixed)
 
 # Creamos el nuevo DataLoader con histórico fijo
-fixed_test_ds = TensorDataset(x_pairs_fixed, cap_inputs_fixed, y_targets_fixed)
+fixed_test_ds = TensorDataset(x_pairs_fixed_test, cap_inputs_fixed_test, y_targets_fixed_test)
 fixed_test_loader = DataLoader(fixed_test_ds, batch_size=32, shuffle=False)
+
+x_pairs_fixed = []
+cap_inputs_fixed = []
+y_targets_fixed = []
+
+for i in range(len(x_train_narx)):
+    current_cycle = x_train_narx[i][1]  # ciclo actual del par
+    soh_target = y_train_narx[i]       # SoH objetivo de este ciclo
+
+    x_pair = torch.stack([historical_cycle, current_cycle])  # (2, 400, 3)
+    x_pairs_fixed.append(x_pair)
+    cap_inputs_fixed.append(historical_soh)  # mismo SoH fijo como entrada
+    y_targets_fixed.append(soh_target)
+
+# Convertimos a tensores
+x_pairs_fixed_train = torch.stack(x_pairs_fixed)
+cap_inputs_fixed_train = torch.stack(cap_inputs_fixed).unsqueeze(1)
+y_targets_fixed_train = torch.stack(y_targets_fixed)
+
+# Creamos el nuevo DataLoader con histórico fijo
+fixed_train_ds = TensorDataset(x_pairs_fixed_train, cap_inputs_fixed_train, y_targets_fixed_train)
+fixed_train_loader = DataLoader(fixed_test_ds, batch_size=32, shuffle=False)
+
+
+x_pairs_fixed = []
+cap_inputs_fixed = []
+y_targets_fixed = []
+
+for i in range(len(x_val_narx)):
+    current_cycle = x_val_narx[i][1]  # ciclo actual del par
+    soh_target = y_val_narx[i]       # SoH objetivo de este ciclo
+
+    x_pair = torch.stack([historical_cycle, current_cycle])  # (2, 400, 3)
+    x_pairs_fixed.append(x_pair)
+    cap_inputs_fixed.append(historical_soh)  # mismo SoH fijo como entrada
+    y_targets_fixed.append(soh_target)
+
+# Convertimos a tensores
+x_pairs_fixed_val = torch.stack(x_pairs_fixed)
+cap_inputs_fixed_val = torch.stack(cap_inputs_fixed).unsqueeze(1)
+y_targets_fixed_val = torch.stack(y_targets_fixed)
+
+# Creamos el nuevo DataLoader con histórico fijo
+fixed_val_ds = TensorDataset(x_pairs_fixed_val, cap_inputs_fixed_val, y_targets_fixed_val)
+fixed_val_loader = DataLoader(fixed_test_ds, batch_size=32, shuffle=False)
 ##########################################################################################################
 
 
@@ -454,7 +499,7 @@ clf = NeuralNetworkClassifier(
 ##########calculo parámetros del modelo###############
 
 
-inference = True
+inference = False
 if inference == True:
     train = False
 elif inference == False:
@@ -500,10 +545,10 @@ if train == True:
     # )
 
     # training network NARX
-    clf.fit_NARX_Transformer(x_train_narx, y_train_narx, x_val_narx, y_val_narx, x_test_narx, y_test_narx,
-                {"train_narx": train_loader_narx,
-            "val_narx": val_loader_narx,
-            "test_narx": test_loader_narx},
+    clf.fit_NARX_Transformer(x_pairs_fixed_train, y_targets_fixed_train, x_val_narx, y_val_narx, x_test_narx, y_test_narx,
+                {"train_narx": fixed_train_loader,
+            "val_narx": fixed_val_loader,
+            "test_narx": fixed_test_loader},
             epochs=500
     )
 
@@ -595,7 +640,7 @@ if train == True:
     #dummy_input = torch.randn(1, *input_shape)
 
     # Dummy inputs (para NARX)
-    dummy_x_pair = torch.randn(1, 2, 400, 3)
+    dummy_x_pair = torch.randn(1, 2, 400, 2)
     dummy_cap_input = torch.randn(1, 1)
 
     # # # #

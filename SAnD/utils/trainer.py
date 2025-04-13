@@ -710,18 +710,27 @@ class NeuralNetworkClassifier:
                 # for data in loader["train_narx"]:
                 #     print(data)
                 #     break  # Para ver solo el primer lote
-                for x_train_narx, cap_train, y_train_narx in loader["train_narx"]:
-                    b_size = y_train_narx.shape[0]
-                    total_samples += y_train_narx.shape[0]
-                    x_train_narx = x_train_narx.to(self.device)  # (batch_size, 2, 400, 3)
-                    cap_train = cap_train.to(self.device)  # (batch_size, 1)
-                    y_train_narx = y_train_narx.to(self.device)    # (batch_size)
+                for x_pairs_fixed_train, cap_inputs_fixed_train, y_targets_fixed_train in loader["train_narx"]:
+                    b_size = y_targets_fixed_train.shape[0]
+                    total_samples += y_targets_fixed_train.shape[0]
+                    x_pairs_fixed_train = x_pairs_fixed_train.to(self.device)  # (batch_size, 2, 400, 3)
+                    cap_inputs_fixed_train = cap_inputs_fixed_train.to(self.device)  # (batch_size, 1)
+                    # Primero verifica la forma original de y_targets_fixed_train
+                    # Asegúrate de que es [32] inicialmente
+                    print("Antes:", y_targets_fixed_train.shape)  # Debería ser [32]
 
+                    # Añade dos dimensiones: una para 'seq_len' y otra para 'feature_dim'
+                    y_targets_fixed_train = y_targets_fixed_train.view(-1, 1, 1)  # Ahora es [32, 1, 1]
+
+                    # Ahora expándelo a [32, 800, 64]
+                    y_targets_fixed_train = y_targets_fixed_train.expand(-1, 800, 64)
+
+                    print("Después:", y_targets_fixed_train.shape)  # Debería ser [32, 800, 64]
                     pbar.set_description("\033[36m" + "Training" + "\033[0m" + " - Epochs: {:03d}/{:03d}".format(epoch+1, epochs))
                     pbar.update(b_size)
                     self.optimizer_narx.zero_grad()
-                    train_output = self.model_narx(x_train_narx, cap_train)
-                    train_loss = self.criterion_narx(train_output, y_train_narx.unsqueeze(1))
+                    train_output = self.model_narx(x_pairs_fixed_train, cap_inputs_fixed_train)
+                    train_loss = self.criterion_narx(train_output, y_targets_fixed_train)
                     train_loss.backward()
                     torch.nn.utils.clip_grad_norm_(self.model_narx.parameters(), max_norm=1.0)
                     self.optimizer_narx.step()
@@ -739,7 +748,7 @@ class NeuralNetworkClassifier:
 
                     # Si quieres llevar un conteo de cuántas predicciones están cerca del valor real (por ejemplo, dentro de un umbral)
                     threshold = 0.1  # Definir un umbral de tolerancia para considerarlo "correcto"
-                    correct_preds = ((train_pred - y_train.to(self.device)).abs() < threshold).sum().float().item()
+                    correct_preds = ((train_pred - y_targets_fixed_train.to(self.device)).abs() < threshold).sum().float().item()
                     train_correct += correct_preds
 
                     total_samples = 24950
@@ -767,22 +776,22 @@ class NeuralNetworkClassifier:
 
                         self.model_narx.eval()
                         pbar = tqdm(total=len_of_val_dataset)
-                        for x_val_narx, cap_val, y_val_narx in loader["val_narx"]:
-                            b_size = y_val_narx.shape[0]
-                            val_total += y_val_narx.shape[0]
-                            x_val_narx = x_val_narx.to(self.device) if isinstance(x_val_narx, torch.Tensor) else [i_val.to(self.device) for i_val in x_val_narx]
-                            y_val_narx = y_val_narx.to(self.device)
-                            cap_val = cap_val.to(self.device)
+                        for x_pairs_fixed_val, cap_inputs_fixed_val, y_targets_fixed_val in loader["val_narx"]:
+                            b_size = y_targets_fixed_val.shape[0]
+                            val_total += y_targets_fixed_val.shape[0]
+                            x_pairs_fixed_val = x_pairs_fixed_val.to(self.device) if isinstance(x_pairs_fixed_val, torch.Tensor) else [i_val.to(self.device) for i_val in x_pairs_fixed_val]
+                            y_targets_fixed_val = y_targets_fixed_val.to(self.device)
+                            cap_inputs_fixed_val = cap_inputs_fixed_val.to(self.device)
 
                             pbar.set_description(
                                 "\033[36m" + "Validating" + "\033[0m" + " - Epochs: {:03d}/{:03d}".format(epoch+1, epochs)
                             )
                             pbar.update(b_size)
 
-                            val_output = self.model_narx(x_val_narx, cap_val)
-                            val_loss = self.criterion_narx(val_output, y_val_narx)
+                            val_output = self.model_narx(x_pairs_fixed_val, cap_inputs_fixed_val)
+                            val_loss = self.criterion_narx(val_output, y_targets_fixed_val.unsqueeze(1))
                             _, val_pred = torch.max(val_output, 1)
-                            val_correct += (val_pred == y_val_narx).sum().float().item()
+                            val_correct += (val_pred == y_targets_fixed_val).sum().float().item()
 
                             # self.experiment.log_metric("loss", val_loss.item(), step=epoch)
                             # self.experiment.log_metric("accuracy", float(val_correct / val_total), step=epoch)
@@ -801,12 +810,12 @@ class NeuralNetworkClassifier:
                         test_total = 0.0
                         self.model_narx.eval()
                         pbar = tqdm(total=len_of_test_dataset)
-                        for x_test_narx, cap_test, y_test_narx  in loader["test_narx"]:
-                            b_size = y_test_narx.shape[0]
-                            test_total += y_test_narx.shape[0]
-                            x_test_narx = x_test_narx.to(self.device) if isinstance(x_test_narx, torch.Tensor) else [i_val.to(self.device) for i_val in x_test_narx]
-                            y_test_narx = y_test_narx.to(self.device)
-                            cap_test = cap_test.to(self.device)
+                        for x_pairs_fixed_test, cap_inputs_fixed_test, y_targets_fixed_test  in loader["test_narx"]:
+                            b_size = y_targets_fixed_test.shape[0]
+                            test_total += y_targets_fixed_test.shape[0]
+                            x_pairs_fixed_test = x_pairs_fixed_test.to(self.device) if isinstance(x_pairs_fixed_test, torch.Tensor) else [i_val.to(self.device) for i_val in x_pairs_fixed_test]
+                            y_targets_fixed_test = y_targets_fixed_test.to(self.device)
+                            cap_inputs_fixed_test = cap_inputs_fixed_test.to(self.device)
                             # x=y[0]
                             # y=y[1]
                             # #x = x.to(self.device) if isinstance(x, torch.Tensor) else [i.to(self.device) for i in x]
@@ -816,8 +825,8 @@ class NeuralNetworkClassifier:
                                 "\033[36m" + "Testing" + "\033[0m" + " - Epochs: {:03d}/{:03d}".format(epoch+1, epochs)
                             )
                             pbar.update(b_size)
-                            test_outputs = self.model_narx(x_test_narx, cap_test)
-                            # test_loss = self.criterion_ni(test_outputs, y_test)
+                            test_outputs = self.model_narx(x_pairs_fixed_test, cap_inputs_fixed_test.unsqueeze(1))
+                            # test_loss = self.criterion_ni(test_outputs, y_targets_fixed_test)
                             # _, test_predicted = torch.max(test_outputs, 1)
                             # test_correct += (test_predicted.to(self.device) == y_test.to(self.device)).sum().float().item()
                             # running_corrects += torch.sum(test_predicted == y_test).float().item()
@@ -829,10 +838,10 @@ class NeuralNetworkClassifier:
                             # Predicciones continuas
                             test_predicted = test_outputs
                             # Comparar las predicciones con las etiquetas reales usando una métrica de error
-                            test_loss = torch.nn.functional.mse_loss(test_predicted, y_test_narx.to(self.device))
+                            test_loss = torch.nn.functional.mse_loss(test_predicted, y_targets_fixed_test.to(self.device).unsqueeze(1))
                             # Si quieres llevar un conteo de cuántas predicciones están cerca del valor real (por ejemplo, dentro de un umbral)
                             threshold = 0.1  # Definir un umbral de tolerancia para considerarlo "correcto"
-                            test_correct += ((test_predicted - y_test_narx.to(self.device)).abs() < threshold).sum().float().item()
+                            test_correct += ((test_predicted - y_targets_fixed_test.to(self.device)).abs() < threshold).sum().float().item()
 
                             self.experiment.log_metric("loss", test_loss.item(), step=epoch)
                             self.experiment.log_metric("accuracy", float(test_correct / total_samples), step=epoch)
