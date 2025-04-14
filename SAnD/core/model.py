@@ -177,39 +177,36 @@ class NARX_Transformer(nn.Module):
         super(NARX_Transformer, self).__init__()
         self.num_cycles = num_cycles
         self.num_preds = num_preds
-        self.cap_linear_layer = nn.Linear(self.num_cycles-1, feature_dim2)
-        self.final_linear_layer = nn.Linear(feature_dim2, 1)
+        self.cap_linear_layer = nn.Linear(self.num_cycles - 1, feature_dim2 * 2)
+        self.final_linear_layer = nn.Linear(feature_dim2 * 2, 1)
+
 
         # self.conv_layer = nn.Conv1d(3, 512, kernel_size=16, stride=8)
-        self.conv_layer = nn.Conv2d(in_channels=2, out_channels=feature_dim1, kernel_size=3, stride=1, padding=1)
-        self.conv_layer2 = nn.Conv2d(in_channels=feature_dim1, out_channels=feature_dim2, kernel_size=3, padding=1)
-        self.encoder_layer = nn.TransformerEncoderLayer(d_model=feature_dim2, nhead=num_attention, batch_first=True)
-        self.decoder_layer = nn.TransformerDecoderLayer(d_model=feature_dim2, nhead=num_attention, batch_first=True)
+        self.conv_layer = nn.Conv2d(num_cycles, feature_dim1, kernel_size=(3, 1), stride=1, padding=(1, 0))
+        self.conv_layer2 = nn.Conv2d(feature_dim1,feature_dim2,kernel_size=(3, 1))
+        self.encoder_layer = nn.TransformerEncoderLayer(d_model=feature_dim2 * 2, nhead=num_attention, batch_first=True)
+        self.decoder_layer = nn.TransformerDecoderLayer(d_model=feature_dim2 * 2, nhead=num_attention, batch_first=True)
 
     def forward(self, my_data, capacity):
-        my_data = my_data.permute(0, 3, 2, 1)  # => (batch, channels=2, height=400, width=2)
         embedded_data = self.conv_layer(my_data)
-        embedded_data = self.conv_layer2(embedded_data)
-
-        # Aplanamos las dimensiones espaciales (height, width) en una sola dimensión
-        batch_size, channels, h, w = embedded_data.shape
-        embedded_data = embedded_data.view(batch_size, channels, h * w)  # (B, feature_dim2, H'*W')
-
-        # Ahora permutamos para que sea (B, seq_len, feature_dim2)
-        embedded_data = embedded_data.permute(0, 2, 1)
+        embedded_data = self.conv_layer2(embedded_data).squeeze(-1)
+        #print(embedded_data.shape)
+        # embedded_data: [B, 64, 398, 2]
+        embedded_data = embedded_data.permute(0, 2, 1, 3)  # → [B, 398, 64, 2]
+        embedded_data = embedded_data.reshape(embedded_data.size(0), embedded_data.size(1), -1)  # → [B, 398, 128]
 
         encoded_data = self.encoder_layer(embedded_data)
 
         tgt = self.cap_linear_layer(capacity)
-        #tgt = tgt.unsqueeze(2)
-        #tgt = tgt.unsqueeze(1)
-        tgt = tgt.expand(-1, encoded_data.shape[1], -1)  # Expandir a (batch_size, 800, feature_dim
-        decoded_data = self.decoder_layer(tgt, encoded_data)
-        decoded_data = decoded_data.squeeze(1)
+        tgt = tgt.view(tgt.size(0), 1, -1)  # 👈 Esto siempre te da (batch_size, 1, feature_dim)
+        tgt = tgt.expand(-1, encoded_data.size(1), -1)
 
-        output_cap = self.final_linear_layer(decoded_data)
 
+        decoded_data = self.decoder_layer(tgt, encoded_data)  # (batch_size, seq_len, feature_dim)
+        decoded_data = decoded_data.mean(dim=1)  # opcional: agregamos sobre la secuencia
+        output_cap = self.final_linear_layer(decoded_data)  # (batch_size, 1)
         return output_cap
+
 
     def pred_sequence(self, my_data, capacity):
         pred_caps = torch.stack([capacity[:,i] for i in range(self.num_cycles-1)], axis=-1)

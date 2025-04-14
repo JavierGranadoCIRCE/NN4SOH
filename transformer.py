@@ -281,7 +281,7 @@ y_targets_fixed_train = torch.stack(y_targets_fixed)
 
 # Creamos el nuevo DataLoader con histórico fijo
 fixed_train_ds = TensorDataset(x_pairs_fixed_train, cap_inputs_fixed_train, y_targets_fixed_train)
-fixed_train_loader = DataLoader(fixed_test_ds, batch_size=32, shuffle=False)
+fixed_train_loader = DataLoader(fixed_train_ds, batch_size=32, shuffle=False)
 
 
 x_pairs_fixed = []
@@ -499,7 +499,7 @@ clf = NeuralNetworkClassifier(
 ##########calculo parámetros del modelo###############
 
 
-inference = False
+inference = True
 if inference == True:
     train = False
 elif inference == False:
@@ -545,7 +545,7 @@ if train == True:
     # )
 
     # training network NARX
-    clf.fit_NARX_Transformer(x_pairs_fixed_train, y_targets_fixed_train, x_val_narx, y_val_narx, x_test_narx, y_test_narx,
+    clf.fit_NARX_Transformer(x_pairs_fixed_train, y_targets_fixed_train, x_pairs_fixed_val, y_targets_fixed_val, x_pairs_fixed_test, y_targets_fixed_test,
                 {"train_narx": fixed_train_loader,
             "val_narx": fixed_val_loader,
             "test_narx": fixed_test_loader},
@@ -808,7 +808,7 @@ def realizar_inferencia(x_test, y_test, test_loader, modo="onnx", modelo=None):
     print(f"SMAPE: {smape}")
 
 
-def realizar_inferencia_narx(x_test, y_test, cap_test, modo="onnx", modelo=None):
+def realizar_inferencia_narx(x_test, cap_test, y_test, modo="onnx", modelo=None):
     """Realiza la inferencia usando ONNX o PyTorch y calcula métricas."""
 
 
@@ -879,7 +879,7 @@ def realizar_inferencia_narx(x_test, y_test, cap_test, modo="onnx", modelo=None)
         real_values = []
         pred_values = []
 
-        for idx in range(len(x_test_narx)):
+        for idx in range(len(x_val_narx)):
             pred = soh_predictions[0][idx]
             real = soh_predictions[1][idx]
 
@@ -941,7 +941,7 @@ if inference ==  True:
     modelo ="save_params/trained_model_narx.pth"
     #realizar_inferencia(x_test, y_test, test_loader, modo, modelo)
     #realizar_inferencia_narx(x_test_narx, y_test_narx, cap_test, modo, modelo)
-    realizar_inferencia_narx(x_pairs_fixed, cap_inputs_fixed, y_targets_fixed, modo, modelo)
+    realizar_inferencia_narx(x_pairs_fixed_test, cap_inputs_fixed_test, y_targets_fixed_test, modo, modelo)
     #realizar_inferencia("save_params/trained_model_normal.pth")
 
 
