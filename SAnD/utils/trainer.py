@@ -853,6 +853,7 @@ class NeuralNetworkClassifier:
 
 
 
+
     def evaluate(self, loader: DataLoader, verbose: bool = False) -> None or float:
         """
         The method of evaluating your PyTorch Model.

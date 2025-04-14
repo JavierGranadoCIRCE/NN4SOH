@@ -554,6 +554,7 @@ if train == True:
 
 
 
+
     # # # #
     # # # #
     # # # #
@@ -746,7 +747,7 @@ def realizar_inferencia(x_test, y_test, test_loader, modo="onnx", modelo=None):
         #Inference SoH Normal ###############################
         #inference_model = Inference_SoH_Normal("save_params/trained_model_normal.pth", input_features=3, seq_len=400, n_heads=16, factor=1, n_class=1, n_layers=8)
         #inference_model = Inference_SoH_Normal_Improve(modelo, input_features=3, seq_len=400, n_heads=1, factor=1, n_class=1, n_layers=8)
-        inference_model = Inference_SoH_NARX(modelo, input_features=3, seq_len=400, n_heads=1, num_cycles = 2, num_preds=1)
+        inference_model = Inference_SoH_NARX(modelo, input_features=2, seq_len=400, n_heads=16, num_cycles = 2, num_preds=1)
         # inference_model = Inference_SoH_Siamese(modelo, input_features=3, seq_len=400, n_heads=32, factor=32, n_class=1, n_layers=4)
         soh_predictions = inference_model.predict(test_loader)
         #Inference SoH ###############################
@@ -867,7 +868,7 @@ def realizar_inferencia_narx(x_test, cap_test, y_test, modo="onnx", modelo=None)
         #Inference SoH Normal ###############################
         # inference_model = Inference_SoH_Normal("save_params/trained_model_normal.pth", input_features=3, seq_len=400, n_heads=32, factor=32, n_class=1, n_layers=4)
         #inference_model = Inference_SoH_Normal_Improve(modelo, input_features=3, seq_len=400, n_heads=1, factor=1, n_class=1, n_layers=8)
-        inference_model = Inference_SoH_NARX(modelo, input_features=64, seq_len=64, n_heads=64, num_cycles = 2, num_preds=1)
+        inference_model = Inference_SoH_NARX(modelo, input_features=64, seq_len=64, n_heads=16, num_cycles = 2, num_preds=1)
         # inference_model = Inference_SoH_Siamese(modelo, input_features=3, seq_len=400, n_heads=32, factor=32, n_class=1, n_layers=4)
         soh_predictions = inference_model.predict(test_loader_narx)
         #Inference SoH ###############################
