@@ -43,7 +43,7 @@ from SAnD.utils.functions import generar_pares_aleatorios
 from SAnD.utils.trainer import NeuralNetworkClassifier
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.model_selection import train_test_split
-import torch
+import torch, gc
 from torch.utils.data import TensorDataset, DataLoader
 from torchinfo import summary
 ######################################## Introducimos la rama de NARX
@@ -460,7 +460,7 @@ if inference == True:
 elif inference == False:
     train = True
     torch.cuda.empty_cache()
-
+    gc.collect()
 
 export_csv = False
 if export_csv == True:
