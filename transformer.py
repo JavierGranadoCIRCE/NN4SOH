@@ -215,7 +215,7 @@ x_pairs, cap_inputs, y_targets = create_cycle_triplets(data, labels)
 
 ###########################################################
 # Mantener solo las dos primeras variables: V (0), I (1)
-x_pairs = x_pairs[:, :, :, :2]  # Deja solo V e I, elimina Tª (índice 2)
+#x_pairs = x_pairs[:, :, :, :2]  # Deja solo V e I, elimina Tª (índice 2)
 ################################################################
 x_train_narx, x_temp_narx, cap_train, cap_temp, y_train_narx, y_temp_narx = train_test_split(
     x_pairs, cap_inputs, y_targets, test_size=0.2, random_state=42, shuffle=False)
@@ -481,7 +481,7 @@ clf = NeuralNetworkClassifier(
     nn.MSELoss(),
     nn.L1Loss(),
     #nn.SmoothL1Loss(beta=0.1),  # Cambiar a SmoothL1Loss,
-    optim.AdamW,optimizer_config={"lr": 1e-6, "betas": (0.9, 0.98), "eps": 4e-09, "weight_decay": 5e-4},
+    optim.AdamW,optimizer_config={"lr": 1e-7, "betas": (0.9, 0.98), "eps": 4e-09, "weight_decay": 5e-4},
     # optim.AdamW,optimizer_config={"lr": 1e-6, "betas": (0.9, 0.96), "eps": 1e-08, "weight_decay": 1e-6},
     # optim.SGD, optimizer_config={"lr":1e-6, "momentum": 0.9,"weight_decay": 1e-4},
     #experiment=Experiment("8mKGHiYeg2P7dZEFlvQv3PEzc")
@@ -506,7 +506,7 @@ clf = NeuralNetworkClassifier(
 ##########calculo parámetros del modelo###############
 
 
-inference = True
+inference = False
 if inference == True:
     train = False
 elif inference == False:
