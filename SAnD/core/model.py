@@ -172,6 +172,10 @@ class SiameseSAnD(nn.Module):
         return similarity
 
 
+###########################################################################################
+##################   NARX para 2 variables (V, I)
+##########################################################################################
+
 class NARX_Transformer(nn.Module):
     def __init__(self, feature_dim1,feature_dim2, num_attention, num_cycles, num_preds):
         super(NARX_Transformer, self).__init__()
@@ -217,36 +221,41 @@ class NARX_Transformer(nn.Module):
         return pred_caps
 
 
+
+
+###########################################################################################
+##################   NARX para 3 variables (V, I, Tª)
+##########################################################################################
 # class NARX_Transformer(nn.Module):
-#     def __init__(self, feature_dim1, feature_dim2, num_attention):
+#     def __init__(self, feature_dim1,feature_dim2, num_attention, num_cycles, num_preds):
 #         super(NARX_Transformer, self).__init__()
-#
-#         # Capa convolucional 2D para los datos de entrada (1 canal = un solo ciclo con 3 variables)
-#         self.conv_layer = nn.Conv2d(1, feature_dim1, kernel_size=3, stride=1, padding=1)
-#         self.conv_layer2 = nn.Conv2d(feature_dim1, feature_dim2, kernel_size=3)
-#
-#         # Capas de transformador
-#         self.encoder_layer = nn.TransformerEncoderLayer(d_model=feature_dim2, nhead=num_attention, batch_first=True)
-#         self.encoder = nn.TransformerEncoder(self.encoder_layer, num_layers=2)
-#
-#         # MLP final
-#         self.pooling = nn.AdaptiveAvgPool1d(1)
+#         self.num_cycles = num_cycles
+#         self.num_preds = num_preds
+#         self.cap_linear_layer = nn.Linear(self.num_cycles-1, feature_dim2)
 #         self.final_linear_layer = nn.Linear(feature_dim2, 1)
 #
-#     def forward(self, my_data):
-#         # my_data: (batch_size, 400, 3)
-#         my_data = my_data.permute(0, 2, 1)  # → (batch_size, 3, 400)
-#         my_data = my_data.unsqueeze(1)      # → (batch_size, 1, 3, 400)
+#         # self.conv_layer = nn.Conv1d(3, 512, kernel_size=16, stride=8)
+#         self.conv_layer = nn.Conv2d(num_cycles, feature_dim1, kernel_size=3, stride=1,padding=1)
+#         self.conv_layer2 = nn.Conv2d(feature_dim1,feature_dim2,kernel_size=3)
+#         self.encoder_layer = nn.TransformerEncoderLayer(d_model=feature_dim2, nhead=num_attention, batch_first=True)
+#         self.decoder_layer = nn.TransformerDecoderLayer(d_model=feature_dim2, nhead=num_attention, batch_first=True)
 #
-#         embedded = self.conv_layer(my_data) # → (batch_size, feature_dim1, H, W)
-#         embedded = self.conv_layer2(embedded)  # → (batch_size, feature_dim2, H', W')
-#         embedded = embedded.squeeze(2)         # → (batch_size, feature_dim2, W')
-#         embedded = embedded.permute(0, 2, 1)   # → (batch_size, seq_len, feature_dim2)
+#     def forward(self, my_data, capacity):
+#         embedded_data = self.conv_layer(my_data)
+#         embedded_data = self.conv_layer2(embedded_data).squeeze(-1)
+#         embedded_data = embedded_data.permute(0, 2, 1)
+#         encoded_data = self.encoder_layer(embedded_data)
 #
-#         encoded = self.encoder(embedded)       # → (batch_size, seq_len, feature_dim2)
-#         encoded = encoded.permute(0, 2, 1)     # → (batch_size, feature_dim2, seq_len)
-#         pooled = self.pooling(encoded)         # → (batch_size, feature_dim2, 1)
-#         pooled = pooled.squeeze(-1)            # → (batch_size, feature_dim2)
+#         tgt = self.cap_linear_layer(capacity)
+#         tgt = tgt.unsqueeze(1)
+#         decoded_data = self.decoder_layer(tgt, encoded_data)
+#         decoded_data = decoded_data.squeeze(1)
+#         output_cap = self.final_linear_layer(decoded_data)
+#         return output_cap
 #
-#         output = self.final_linear_layer(pooled)  # → (batch_size, 1)
-#         return output
+#     def pred_sequence(self, my_data, capacity):
+#         pred_caps = torch.stack([capacity[:,i] for i in range(self.num_cycles-1)], axis=-1)
+#         for cycle in range(self.num_preds):
+#             pred = self.forward(my_data[:,cycle:cycle+self.num_cycles], pred_caps[:,-self.num_cycles+1:])
+#             pred_caps = torch.cat([pred_caps, pred], axis=-1)
+#         return pred_caps
