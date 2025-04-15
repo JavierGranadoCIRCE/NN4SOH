@@ -215,7 +215,7 @@ x_pairs, cap_inputs, y_targets = create_cycle_triplets(data, labels)
 
 ###########################################################
 # Mantener solo las dos primeras variables: V (0), I (1)
-x_pairs = x_pairs[:, :, :, :2]  # Deja solo V e I, elimina Tª (índice 2)
+#x_pairs = x_pairs[:, :, :, :2]  # Deja solo V e I, elimina Tª (índice 2)
 ################################################################
 x_train_narx, x_temp_narx, cap_train, cap_temp, y_train_narx, y_temp_narx = train_test_split(
     x_pairs, cap_inputs, y_targets, test_size=0.2, random_state=42, shuffle=False)
@@ -254,7 +254,7 @@ for i in range(len(x_test_narx)):
 
 # Convertimos a tensores
 x_pairs_fixed_test = torch.stack(x_pairs_fixed)
-cap_inputs_fixed_test = torch.stack(cap_inputs_fixed).unsqueeze(1)
+cap_inputs_fixed_test = torch.stack(cap_inputs_fixed)
 y_targets_fixed_test = torch.stack(y_targets_fixed)
 
 # Creamos el nuevo DataLoader con histórico fijo
@@ -276,7 +276,7 @@ for i in range(len(x_train_narx)):
 
 # Convertimos a tensores
 x_pairs_fixed_train = torch.stack(x_pairs_fixed)
-cap_inputs_fixed_train = torch.stack(cap_inputs_fixed).unsqueeze(1)
+cap_inputs_fixed_train = torch.stack(cap_inputs_fixed)
 y_targets_fixed_train = torch.stack(y_targets_fixed)
 
 # Creamos el nuevo DataLoader con histórico fijo
@@ -299,7 +299,7 @@ for i in range(len(x_val_narx)):
 
 # Convertimos a tensores
 x_pairs_fixed_val = torch.stack(x_pairs_fixed)
-cap_inputs_fixed_val = torch.stack(cap_inputs_fixed).unsqueeze(1)
+cap_inputs_fixed_val = torch.stack(cap_inputs_fixed)
 y_targets_fixed_val = torch.stack(y_targets_fixed)
 
 # Creamos el nuevo DataLoader con histórico fijo
@@ -549,7 +549,7 @@ if train == True:
                 {"train_narx": train_loader_narx,
             "val_narx": val_loader_narx,
             "test_narx": test_loader_narx},
-            epochs=20
+            epochs=200
     )
 
 
@@ -941,7 +941,7 @@ if inference ==  True:
     modelo ="save_params/trained_model_narx.pth"
     #realizar_inferencia(x_test, y_test, test_loader, modo, modelo)
     #realizar_inferencia_narx(x_test_narx, y_test_narx, cap_test, modo, modelo)
-    realizar_inferencia_narx(x_pairs_fixed, cap_inputs_fixed, y_targets_fixed, modo, modelo)
+    realizar_inferencia_narx(x_pairs_fixed_test, cap_inputs_fixed_test, y_targets_fixed_test, modo, modelo)
     #realizar_inferencia("save_params/trained_model_normal.pth")
 
 
