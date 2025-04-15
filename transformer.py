@@ -215,7 +215,7 @@ x_pairs, cap_inputs, y_targets = create_cycle_triplets(data, labels)
 
 ###########################################################
 # Mantener solo las dos primeras variables: V (0), I (1)
-#x_pairs = x_pairs[:, :, :, :2]  # Deja solo V e I, elimina Tª (índice 2)
+x_pairs = x_pairs[:, :, :, :2]  # Deja solo V e I, elimina Tª (índice 2)
 ################################################################
 x_train_narx, x_temp_narx, cap_train, cap_temp, y_train_narx, y_temp_narx = train_test_split(
     x_pairs, cap_inputs, y_targets, test_size=0.2, random_state=42, shuffle=False)
@@ -246,6 +246,8 @@ y_targets_fixed = []
 for i in range(len(x_test_narx)):
     current_cycle = x_test_narx[i][1]  # ciclo actual del par
     soh_target = y_test_narx[i]       # SoH objetivo de este ciclo
+    historical_cycle = x_test_narx[i][1]  # ciclo actual del par
+    historical_soh = y_test_narx[i].unsqueeze(-1)
 
     x_pair = torch.stack([historical_cycle, current_cycle])  # (2, 400, 3)
     x_pairs_fixed.append(x_pair)
@@ -268,6 +270,8 @@ y_targets_fixed = []
 for i in range(len(x_train_narx)):
     current_cycle = x_train_narx[i][1]  # ciclo actual del par
     soh_target = y_train_narx[i]       # SoH objetivo de este ciclo
+    historical_cycle = x_train_narx[i][1]  # ciclo actual del par
+    historical_soh = y_train_narx[i].unsqueeze(-1)
 
     x_pair = torch.stack([historical_cycle, current_cycle])  # (2, 400, 3)
     x_pairs_fixed.append(x_pair)
@@ -291,6 +295,9 @@ y_targets_fixed = []
 for i in range(len(x_val_narx)):
     current_cycle = x_val_narx[i][1]  # ciclo actual del par
     soh_target = y_val_narx[i]       # SoH objetivo de este ciclo
+    historical_cycle = x_val_narx[i][1]  # ciclo actual del par
+    historical_soh = y_val_narx[i].unsqueeze(-1)
+
 
     x_pair = torch.stack([historical_cycle, current_cycle])  # (2, 400, 3)
     x_pairs_fixed.append(x_pair)
@@ -304,7 +311,7 @@ y_targets_fixed_val = torch.stack(y_targets_fixed)
 
 # Creamos el nuevo DataLoader con histórico fijo
 fixed_val_ds = TensorDataset(x_pairs_fixed_val, cap_inputs_fixed_val, y_targets_fixed_val)
-fixed_val_loader = DataLoader(fixed_test_ds, batch_size=32, shuffle=False)
+fixed_val_loader = DataLoader(fixed_val_ds, batch_size=32, shuffle=False)
 ##########################################################################################################
 
 
@@ -545,11 +552,11 @@ if train == True:
     # )
 
     # training network NARX
-    clf.fit_NARX_Transformer(x_train_narx, y_train_narx, x_val_narx, y_val_narx, x_test_narx, y_test_narx,
-                {"train_narx": train_loader_narx,
-            "val_narx": val_loader_narx,
-            "test_narx": test_loader_narx},
-            epochs=200
+    clf.fit_NARX_Transformer(x_pairs_fixed_train, y_targets_fixed_train, x_pairs_fixed_val, y_targets_fixed_val, x_pairs_fixed_test, y_targets_fixed_test,
+                {"train_narx": fixed_train_loader,
+            "val_narx": fixed_val_loader,
+            "test_narx": fixed_test_loader},
+            epochs=150
     )
 
 
@@ -605,7 +612,7 @@ if train == True:
 
     #modelo = SAnD(in_feature, seq_len, n_heads, factor, num_class, num_layers)
     #modelo = SAnDImprove(in_feature, seq_len, n_heads, factor, num_class, num_layers)
-    modelo = NARX_Transformer(64,64, 64, 2, 1)
+    modelo = NARX_Transformer(feature_dim1,feature_dim2, num_attention, num_cycles, num_preds)
     #modelo = SAnD_Embedding(in_feature, seq_len, n_heads, factor, num_class, num_layers)
     # # # # Verificar los atributos de modelo_siamese
     # print(modelo_siamese)
@@ -746,7 +753,7 @@ def realizar_inferencia(x_test, y_test, test_loader, modo="onnx", modelo=None):
         #Inference SoH Normal ###############################
         #inference_model = Inference_SoH_Normal("save_params/trained_model_normal.pth", input_features=3, seq_len=400, n_heads=16, factor=1, n_class=1, n_layers=8)
         #inference_model = Inference_SoH_Normal_Improve(modelo, input_features=3, seq_len=400, n_heads=1, factor=1, n_class=1, n_layers=8)
-        inference_model = Inference_SoH_NARX(modelo, input_features=3, seq_len=400, n_heads=64, num_cycles = 2, num_preds=1)
+        inference_model = Inference_SoH_NARX(modelo, input_features=3, seq_len=400, n_heads=num_attention, num_cycles = num_cycles, num_preds=num_preds)
         # inference_model = Inference_SoH_Siamese(modelo, input_features=3, seq_len=400, n_heads=32, factor=32, n_class=1, n_layers=4)
         soh_predictions = inference_model.predict(test_loader)
         #Inference SoH ###############################
@@ -867,9 +874,9 @@ def realizar_inferencia_narx(x_test, y_test, cap_test, modo="onnx", modelo=None)
         #Inference SoH Normal ###############################
         # inference_model = Inference_SoH_Normal("save_params/trained_model_normal.pth", input_features=3, seq_len=400, n_heads=32, factor=32, n_class=1, n_layers=4)
         #inference_model = Inference_SoH_Normal_Improve(modelo, input_features=3, seq_len=400, n_heads=1, factor=1, n_class=1, n_layers=8)
-        inference_model = Inference_SoH_NARX(modelo, input_features=64, seq_len=64, n_heads=64, num_cycles = 2, num_preds=1)
+        inference_model = Inference_SoH_NARX(modelo, input_features=feature_dim1, seq_len=feature_dim2, n_heads=num_attention, num_cycles = num_cycles, num_preds=num_preds)
         # inference_model = Inference_SoH_Siamese(modelo, input_features=3, seq_len=400, n_heads=32, factor=32, n_class=1, n_layers=4)
-        soh_predictions = inference_model.predict(test_loader_narx)
+        soh_predictions = inference_model.predict(fixed_test_loader)
         #Inference SoH ###############################
 
 
@@ -912,12 +919,12 @@ def realizar_inferencia_narx(x_test, y_test, cap_test, modo="onnx", modelo=None)
         plt.legend()
         plt.show()
     # Cálculo de métricas
-    mae = mae_total / len(x_test)
-    mse = mse_sum / len(x_test)
+    mae = mae_total / len(x_test_narx)
+    mse = mse_sum / len(x_test_narx)
     rmse = np.sqrt(mse)
-    smape = smap_total / len(x_test)
+    smape = smap_total / len(x_test_narx)
     # Calcula el MAPE promedio
-    mape = mape_total / len(x_test)
+    mape = mape_total / len(x_test_narx)
     #  Multiplica por 100 para tener el resultado en porcentaje
     # mape_total*= 100
     #mape = (mape_total / len(x_test)) * 100
