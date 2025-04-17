@@ -219,13 +219,13 @@ class SiameseSAnD(nn.Module):
 #             pred = self.forward(my_data[:,cycle:cycle+self.num_cycles], pred_caps[:,-self.num_cycles+1:])
 #             pred_caps = torch.cat([pred_caps, pred], axis=-1)
 #         return pred_caps
-
-
-
-
-###########################################################################################
-##################   NARX para 3 variables (V, I, Tª)
-##########################################################################################
+# #
+#
+#
+#
+# ###########################################################################################
+# ##################   NARX para 3 variables (V, I, Tª)
+# ##########################################################################################
 class NARX_Transformer(nn.Module):
     def __init__(self, feature_dim1,feature_dim2, num_attention, num_cycles, num_preds):
         super(NARX_Transformer, self).__init__()

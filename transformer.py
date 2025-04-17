@@ -506,7 +506,7 @@ clf = NeuralNetworkClassifier(
 ##########calculo parámetros del modelo###############
 
 
-inference = False
+inference = True
 if inference == True:
     train = False
 elif inference == False:
@@ -556,7 +556,7 @@ if train == True:
                 {"train_narx": fixed_train_loader,
             "val_narx": fixed_val_loader,
             "test_narx": fixed_test_loader},
-            epochs=150
+            epochs=2000
     )
 
 
@@ -755,7 +755,8 @@ def realizar_inferencia(x_test, y_test, test_loader, modo="onnx", modelo=None):
         #inference_model = Inference_SoH_Normal_Improve(modelo, input_features=3, seq_len=400, n_heads=1, factor=1, n_class=1, n_layers=8)
         inference_model = Inference_SoH_NARX(modelo, input_features=3, seq_len=400, n_heads=num_attention, num_cycles = num_cycles, num_preds=num_preds)
         # inference_model = Inference_SoH_Siamese(modelo, input_features=3, seq_len=400, n_heads=32, factor=32, n_class=1, n_layers=4)
-        soh_predictions = inference_model.predict(test_loader)
+        soh_predictions = inference_model.predict(fixed_train_loader)
+        # soh_predictions = inference_model.predict(fixed_test_loader)
         #Inference SoH ###############################
 
 
@@ -764,7 +765,8 @@ def realizar_inferencia(x_test, y_test, test_loader, modo="onnx", modelo=None):
         # real = soh_predictions[1]
         real_values = []
         pred_values = []
-
+        x_test = x_train_narx
+        # x_test = x_test_narx
         for idx in range(len(x_test)):
             pred = soh_predictions[0][idx]
             real = soh_predictions[1][idx]
@@ -885,8 +887,8 @@ def realizar_inferencia_narx(x_test, y_test, cap_test, modo="onnx", modelo=None)
         # real = soh_predictions[1]
         real_values = []
         pred_values = []
-
-        for idx in range(len(x_test_narx)):
+        x_test = x_test_narx
+        for idx in range(len(x_test)):
             pred = soh_predictions[0][idx]
             real = soh_predictions[1][idx]
 
@@ -919,12 +921,12 @@ def realizar_inferencia_narx(x_test, y_test, cap_test, modo="onnx", modelo=None)
         plt.legend()
         plt.show()
     # Cálculo de métricas
-    mae = mae_total / len(x_test_narx)
-    mse = mse_sum / len(x_test_narx)
+    mae = mae_total / len(x_test)
+    mse = mse_sum / len(x_test)
     rmse = np.sqrt(mse)
-    smape = smap_total / len(x_test_narx)
+    smape = smap_total / len(x_test)
     # Calcula el MAPE promedio
-    mape = mape_total / len(x_test_narx)
+    mape = mape_total / len(x_test)
     #  Multiplica por 100 para tener el resultado en porcentaje
     # mape_total*= 100
     #mape = (mape_total / len(x_test)) * 100
